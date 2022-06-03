@@ -27,9 +27,10 @@ namespace PBL3.Controllers {
                     n.TitleName,
                     n.Content,
                     n.DatePost,
+                    ManagerPost = n.Manager.User,
                     n.DateUpdate,
-                    n.ManagerIdUpdated,
-                    ManagerPost = n.Manager.User
+                    ManagerUpdate = n.ManagerIdUpdated == null 
+                        ? null : _context.Users.FirstOrDefault(u => u.Id == n.ManagerIdUpdated)
                 }).ToListAsync();
 
             if (notification == null)
@@ -48,9 +49,10 @@ namespace PBL3.Controllers {
                     n.TitleName,
                     n.Content,
                     n.DatePost,
+                    ManagerPost = n.Manager.User,
                     n.DateUpdate,
-                    n.ManagerIdUpdated,
-                    ManagerPost = n.Manager.User
+                    ManagerUpdate = n.ManagerIdUpdated == null 
+                        ? null : _context.Users.FirstOrDefault(u => u.Id == n.ManagerIdUpdated)
                 }).FirstOrDefaultAsync(n => n.NotificationId == id);
             if (notification == null)
                 return BadRequest("Notification are't exist!");
@@ -63,7 +65,7 @@ namespace PBL3.Controllers {
         public async Task<ActionResult> AddNotification(NotificationDto notificationDto) {
             Notification notification = new Notification {
                 NotificationId = await generationNewNotificationId(),
-                ManagerId = getCurrentEmployeeId(),
+                ManagerIdPost = getCurrentEmployeeId(),
                 TitleName = notificationDto.TitleName,
                 Content = notificationDto.Content,
                 DatePost = notificationDto.DatePost,

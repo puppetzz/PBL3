@@ -21,10 +21,30 @@ namespace PBL3.Controllers {
         [Authorize]
         public async Task<ActionResult> GetAllReceipt() {
             var receipts = await _context
-                .ReceiptCommodities
-                .Include(r => r.Receipt)
-                .Include(r => r.Commodity)
-                .ToListAsync();
+                .Receipts
+                .Include(r => r.ReceiptCommodities)
+                .ThenInclude(r => r.Commodity)
+                .Select(r => new {
+                    r.ReceiptId,
+                    r.EmployeeId,
+                    commodtiy = _context.ReceiptCommodities
+                        .Where(rc => rc.ReceiptId == r.ReceiptId)
+                        .Select(rc => new {
+                            rc.CommodityId,
+                            rc.Commodity.Type,
+                            Quantity = Convert.ToInt32(
+                                _context.ReceiptCommodities
+                                .Where(o => o.ReceiptId == r.ReceiptId && o.CommodityId == rc.CommodityId)
+                                .Select(o => o.CommodityQuantity)
+                                .FirstOrDefault()),
+                            rc.Commodity.Brand,
+                            rc.Commodity.Name,
+                            rc.Commodity.Price,
+                            rc.Commodity.warrantyTime
+                        }).ToList(),
+                    r.TotalPrice,
+                    r.Date
+                }).ToListAsync();
 
             return Ok(receipts);
         }
@@ -52,18 +72,17 @@ namespace PBL3.Controllers {
 
             string newId = await generationNewReceiptId();
 
-
-            foreach (string commodityid in receiptDto.CommodityId) {
-                var commodity = await _context.Commodities.FirstOrDefaultAsync(c => c.CommodityId == commodityid);
-                if (commodity == null)
+            foreach (Tuple<string, int> commodity in receiptDto.Commodity) {
+                var commoditydb = await _context.Commodities.FirstOrDefaultAsync(c => c.CommodityId == commodity.Item1);
+                if (commoditydb == null)
                     return BadRequest("Commodity does not exist!");
-                totalPrice += commodity.Price * receiptDto.Quantity;
+                totalPrice += commoditydb.Price * commodity.Item2;
+                commoditydb.Quantity -= commodity.Item2;
                 receiptCommodities.Add(new ReceiptCommodity {
                     ReceiptId = newId,
-                    CommodityId = commodityid,
-                    CommodityQuantity = receiptDto.Quantity
+                    CommodityId = commodity.Item1,
+                    CommodityQuantity = commodity.Item2
                 });
-                commodity.Quantity -= receiptDto.Quantity;
             }
 
 

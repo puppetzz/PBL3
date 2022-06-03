@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using PBL3.Data;
 
@@ -11,9 +12,10 @@ using PBL3.Data;
 namespace PBL3.Migrations
 {
     [DbContext(typeof(ShopGuitarContext))]
-    partial class ShopGuitarContextModelSnapshot : ModelSnapshot
+    [Migration("20220603145342_configReceiptRelationship")]
+    partial class configReceiptRelationship
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -162,15 +164,26 @@ namespace PBL3.Migrations
                         .HasColumnType("nvarchar(450)");
 
                     b.Property<string>("CommodityId")
+                        .IsRequired()
                         .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("CommodityId1")
                         .HasColumnType("nvarchar(20)");
 
                     b.Property<int>("CommodityQuantity")
                         .HasColumnType("int");
 
-                    b.HasKey("ReceiptId", "CommodityId");
+                    b.Property<string>("ReceiptId1")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("ReceiptId");
 
                     b.HasIndex("CommodityId");
+
+                    b.HasIndex("CommodityId1");
+
+                    b.HasIndex("ReceiptId1");
 
                     b.ToTable("ReceiptCommodities");
                 });
@@ -312,16 +325,24 @@ namespace PBL3.Migrations
             modelBuilder.Entity("PBL3.Models.ReceiptCommodity", b =>
                 {
                     b.HasOne("PBL3.Models.Commodity", "Commodity")
-                        .WithMany("ReceiptCommodities")
+                        .WithMany()
                         .HasForeignKey("CommodityId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("PBL3.Models.Receipt", "Receipt")
+                    b.HasOne("PBL3.Models.Commodity", null)
                         .WithMany("ReceiptCommodities")
+                        .HasForeignKey("CommodityId1");
+
+                    b.HasOne("PBL3.Models.Receipt", "Receipt")
+                        .WithMany()
                         .HasForeignKey("ReceiptId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("PBL3.Models.Receipt", null)
+                        .WithMany("ReceiptCommodities")
+                        .HasForeignKey("ReceiptId1");
 
                     b.Navigation("Commodity");
 

@@ -13,6 +13,10 @@ namespace PBL3.Data {
                 .WithMany()
                 .HasForeignKey(e => e.ManagerId)
                 .OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<ReceiptCommodity>().HasKey(rc => new {
+                rc.ReceiptId,
+                rc.CommodityId
+            });
         }
 
         public DbSet<Account> Accounts { get; set; }

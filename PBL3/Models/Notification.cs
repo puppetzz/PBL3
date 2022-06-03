@@ -13,7 +13,7 @@ namespace PBL3.Models {
         public DateTime? DateUpdate { get; set; } = null;
         [StringLength(9)]
         [ForeignKey("Manager")]
-        public string ManagerId { get; set; }
+        public string ManagerIdPost { get; set; }
         public virtual Employee Manager { get; set; }
     }
 }

@@ -4,7 +4,6 @@ using System.Text.Json.Serialization;
 
 namespace PBL3.Models {
     public class ReceiptCommodity {
-        [Key]
         [ForeignKey("Receipt")]
         public string ReceiptId { get; set; }
         [ForeignKey("Commodity")]

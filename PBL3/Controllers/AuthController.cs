@@ -18,6 +18,8 @@ namespace PBL3.Controllers {
         private readonly ShopGuitarContext _context;
         private readonly IConfiguration _configuration;
 
+        public ActionResult UserTokenProvider { get; private set; }
+
         public AuthController(ShopGuitarContext context, IConfiguration configuration) {
             _context = context;
             _configuration = configuration;
