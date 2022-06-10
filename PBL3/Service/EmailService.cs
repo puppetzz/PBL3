@@ -16,7 +16,7 @@ namespace PBL3.Service {
             email.From.Add(MailboxAddress.Parse(_config.GetSection("SMTP:EmailUserName").Value));
             email.To.Add(MailboxAddress.Parse(emailDto.To));
             email.Subject = emailDto.Subject;
-            email.Body = new TextPart(TextFormat.Html) { Text = emailDto.Key };
+            email.Body = new TextPart(TextFormat.Html) { Text = emailDto.Content };
 
             using var smtp = new SmtpClient();
             smtp.Connect(_config.GetSection("SMTP:EmailHost").Value, 587, SecureSocketOptions.StartTls);

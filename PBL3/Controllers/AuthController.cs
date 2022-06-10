@@ -65,9 +65,10 @@ namespace PBL3.Controllers {
                 await _emailService.SendEmail(new EmailDto {
                     To = email,
                     Subject = "Comfirm your password!",
-                    Key = verificationToken
+                    Type = "Verify",
+                    Content = verificationToken
                 });
-                account.VerifyTokenExpires = DateTime.UtcNow.AddHours(7).AddMinutes(2);
+                account.VerifyTokenExpires = DateTime.UtcNow.AddHours(7).AddMinutes(5);
 
                 await _context.Accounts.AddAsync(account);
                 await _context.SaveChangesAsync();
@@ -78,15 +79,24 @@ namespace PBL3.Controllers {
             return BadRequest("Account already exists or UserId not exists");
         }
 
-        [HttpGet("RefreshVerifyToken")]
+        [HttpGet("refresh-verify-account-token/{userId}")]
         public async Task<IActionResult> RefreshVerifyToken(string userId) {
             var account = await _context.Accounts.FirstOrDefaultAsync(a => a.UserId == userId);
+
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
 
             if (account == null)
                 return BadRequest("Account does not exist!");
 
             account.VerificationToken = CreateRandomToken();
-            account.VerifyTokenExpires = DateTime.UtcNow.AddHours(7).AddMinutes(2);
+            await _emailService.SendEmail(new EmailDto {
+                To = user.Email,
+                Subject = "Code Verify Account.",
+                Type = "Verify",
+                Content = account.VerificationToken
+            });
+            account.VerifyTokenExpires = DateTime.UtcNow.AddHours(7).AddMinutes(5);
+            await _context.SaveChangesAsync();
 
             return Ok("Please check your email");
         }
@@ -149,9 +159,10 @@ namespace PBL3.Controllers {
             await _emailService.SendEmail(new EmailDto {
                 To = user.Email,
                 Subject = "Reset Password",
-                Key = account.PasswordResetToken
+                Type = "Reset",
+                Content = account.PasswordResetToken
             });
-            account.ResetTokenExpires = DateTime.UtcNow.AddHours(7).AddMinutes(2);
+            account.ResetTokenExpires = DateTime.UtcNow.AddHours(7).AddMinutes(5);
             await _context.SaveChangesAsync();
 
             return Ok("Please check your email");
@@ -215,6 +226,29 @@ namespace PBL3.Controllers {
             await _context.SaveChangesAsync();
 
             return Ok("Password successfully change.");
+        }
+
+        [HttpGet("refresh-reset-password-token/{userId}")]
+        public async Task<IActionResult> RefreshResetPasswordToken(string userId) {
+            var account = await _context.Accounts.FirstOrDefaultAsync(a => a.UserId == userId);
+
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
+
+            if (account == null)
+                return BadRequest("Account does not exist!");
+
+            account.PasswordResetToken = CreateRandomToken();
+            await _emailService.SendEmail(new EmailDto {
+                To = user.Email,
+                Subject = "Code Verify Reset Password.",
+                Type = "Reset",
+                Content = account.PasswordResetToken
+            });
+            account.ResetTokenExpires = DateTime.UtcNow.AddHours(7).AddMinutes(5);
+
+            await _context.SaveChangesAsync();
+
+            return Ok("Please check your email");
         }
 
         private string createToken(User user) {
