@@ -28,5 +28,6 @@ namespace PBL3.Data {
         public DbSet<Receipt> Receipts { get; set; }
         public DbSet<ReceiptCommodity> ReceiptCommodities { get; set; }
         public DbSet<Commodity> Commodities { get; set; }
+        public DbSet<Customer> Customers { get; set; }
     }
 }

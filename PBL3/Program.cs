@@ -1,8 +1,10 @@
+using Azure.Storage.Blobs;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using PBL3.Data;
+using PBL3.Service;
 using Swashbuckle.AspNetCore.Filters;
 using System.Text;
 
@@ -13,7 +15,12 @@ builder.Services.AddControllers();
 builder.Services.AddDbContext<ShopGuitarContext>(options => {
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"));
 });
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+
+builder.Services.AddScoped(o => new BlobServiceClient(builder.Configuration.GetConnectionString("BlobConnection")));
+
+builder.Services.AddScoped<IBlobService, BlobService>();
+builder.Services.AddScoped<IEmailService, EmailService>();
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options => {
     options.AddSecurityDefinition("oauth2", new OpenApiSecurityScheme {
@@ -25,6 +32,7 @@ builder.Services.AddSwaggerGen(options => {
 
     options.OperationFilter<SecurityRequirementsOperationFilter>();
 });
+
 builder.Services.AddCors();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(

@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using PBL3.Data;
 
@@ -11,9 +12,10 @@ using PBL3.Data;
 namespace PBL3.Migrations
 {
     [DbContext(typeof(ShopGuitarContext))]
-    partial class ShopGuitarContextModelSnapshot : ModelSnapshot
+    [Migration("20220609174612_AddVerifyAccount")]
+    partial class AddVerifyAccount
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -49,10 +51,7 @@ namespace PBL3.Migrations
                     b.Property<string>("VerificationToken")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<DateTime?>("VerifiedAccountAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("VerifiedResetPasswordAt")
+                    b.Property<DateTime?>("VerifiedAt")
                         .HasColumnType("datetime2");
 
                     b.Property<DateTime?>("VerifyTokenExpires")

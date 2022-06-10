@@ -5,36 +5,86 @@ using PBL3.Data;
 using PBL3.Models;
 using PBL3.DTO;
 using System.Security.Claims;
+using PBL3.Service;
 
 namespace PBL3.Controllers {
     [Route("api/[Controller]")]
     [ApiController]
     public class EmployeeController : ControllerBase {
         private readonly ShopGuitarContext _context;
+        private readonly IBlobService _blobService;
+        private const string _containerName = "images";
 
-        public EmployeeController(ShopGuitarContext context) {
+        public EmployeeController(ShopGuitarContext context, IBlobService blobService) {
             _context = context;
+            _blobService = blobService;
         }
 
         [HttpGet("employee")]
         [Authorize]
-        public async Task<ActionResult<List<Employee>>> GetAllEmployee() {
+        public async Task<ActionResult> GetAllEmployee() {
             var result = await _context
                 .Employees
                 .Include(e => e.User)
-                .Include(e => e.Titles)
-                .Include(e => e.Salaries)
+                .Select(e => new {
+                    e.Id,
+                    e.User.FirstName,
+                    e.User.LastName,
+                    e.User.Gender,
+                    e.User.DateOfBirth,
+                    e.User.PhoneNumber,
+                    e.User.Email,
+                    e.User.Address,
+                    e.User.Role,
+                    e.ManagerId,
+                    ImageUri = e.User.ImageName == null ? null : _blobService.GetBlob(e.User.ImageName, _containerName),
+                    Title = _context.Titles
+                    .Where(t => t.EmployeeId == e.Id)
+                    .Select(t => new {
+                        t.Name,
+                        t.DateIn,
+                        t.DateOut
+                    }).ToList(),
+                    Salary = _context.Salaries
+                    .Where(s => s.Id == e.Id)
+                    .Select(s => new {
+                        s.Salary
+                    }).ToList()
+                })
                 .ToListAsync();
             return Ok(result);
         }
 
         [HttpGet("employee/{id}")]
         [Authorize]
-        public async Task<ActionResult<Employee>> GetEmployee(string id) {
+        public async Task<ActionResult> GetEmployee(string id) {
             var emp = await _context.Employees
                 .Include(e => e.User)
-                .Include(e => e.Titles)
-                .Include(e => e.Salaries)
+                .Select(e => new {
+                    e.Id,
+                    e.User.FirstName,
+                    e.User.LastName,
+                    e.User.Gender,
+                    e.User.DateOfBirth,
+                    e.User.PhoneNumber,
+                    e.User.Email,
+                    e.User.Address,
+                    e.User.Role,
+                    e.ManagerId,
+                    ImageUri = e.User.ImageName == null ? null : _blobService.GetBlob(e.User.ImageName, _containerName),
+                    Title = _context.Titles
+                    .Where(t => t.EmployeeId == e.Id)
+                    .Select(t => new {
+                        t.Name,
+                        t.DateIn,
+                        t.DateOut
+                    }).ToList(),
+                    Salary = _context.Salaries
+                    .Where(s => s.Id == e.Id)
+                    .Select(s => new {
+                        s.Salary
+                    }).ToList()
+                })
                 .FirstOrDefaultAsync(e => e.Id == id);
             return Ok(emp);
         }
@@ -45,19 +95,55 @@ namespace PBL3.Controllers {
             string id = GetCurrentUser().Id;
             var emp = await _context.Employees
                 .Include(e => e.User)
-                .Include(e => e.Titles)
-                .Include(e => e.Salaries)
-                .FirstOrDefaultAsync();
+                .Select(e => new {
+                    e.Id,
+                    e.User.FirstName,
+                    e.User.LastName,
+                    e.User.Gender,
+                    e.User.DateOfBirth,
+                    e.User.PhoneNumber,
+                    e.User.Email,
+                    e.User.Address,
+                    e.User.Role,
+                    e.ManagerId,
+                    ImageUri = e.User.ImageName == null ? null : _blobService.GetBlob(e.User.ImageName, _containerName),
+                    Title = _context.Titles
+                    .Where(t => t.EmployeeId == e.Id)
+                    .Select(t => new {
+                        t.Name,
+                        t.DateIn,
+                        t.DateOut
+                    }).ToList(),
+                    Salary = _context.Salaries
+                    .Where(s => s.Id == e.Id)
+                    .Select(s => new {
+                        s.Salary
+                    }).ToList()
+                })
+                .FirstOrDefaultAsync(e => e.Id == id);
             return Ok(emp);
         }
 
         [HttpPut("update-employee")]
         [Authorize]
-        public async Task<ActionResult> PutEmployee(EmployeeDto emp) {
+        public async Task<ActionResult> PutEmployee([FromForm]EmployeeUpdateDto emp) {
             var employee = _context.Employees.Find(emp.EmployeeId);
+
             var user = _context.Users.Find(emp.EmployeeId);
-            if (employee == null || user == null) {
+
+            if (employee == null || user == null) 
                 return BadRequest("Employee not found!");
+
+            bool res = false;
+
+            if (emp.ImageFile != null) {
+                _ = await _blobService.DeleteBlobAsync(user.ImageName, _containerName);
+
+                res = await SaveImage(emp.EmployeeId, emp.ImageFile);
+
+                if (!res) {
+                    return BadRequest("Image upload failed");
+                }
             }
 
             user.FirstName = emp.FirstName;
@@ -70,18 +156,37 @@ namespace PBL3.Controllers {
 
             await _context.SaveChangesAsync();
 
-            return Ok("Updated!");
+            return Ok(new {
+                status = "Update successful",
+                ImageAdded = res
+            });
         }
 
         [HttpPut("update-employee-admin")]
         [Authorize(Roles = "admin")]
-        public async Task<ActionResult> updateEmployee(EmployeeDto emp) {
+        public async Task<ActionResult> updateEmployee([FromForm]EmployeeDto emp) {
             var employee = _context.Employees.Find(emp.EmployeeId);
+
             var user = _context.Users.Find(emp.EmployeeId);
+
             var title = _context.Titles.Find(emp.EmployeeId);
+
             var salary = _context.Salaries.Find(emp.EmployeeId);
+
             if (employee == null || user == null || title == null) {
                 return BadRequest("Employee not found!");
+            }
+
+            bool res = false;
+
+            if (emp.ImageFile != null) {
+                _ = await _blobService.DeleteBlobAsync(user.ImageName, _containerName);
+
+                res = await SaveImage(emp.EmployeeId, emp.ImageFile);
+
+                if (!res) {
+                    return BadRequest("Image upload failed");
+                }
             }
 
             employee.ManagerId = emp.ManagerId;
@@ -95,18 +200,23 @@ namespace PBL3.Controllers {
             title.Name = emp.TitleName;
             title.DateIn = emp.DateIn;
             title.DateOut = emp.DateOut;
-            salary.Salary = emp.slary;
+            salary.Salary = emp.salary;
 
             await _context.SaveChangesAsync();
 
-            return Ok("Updated!");
+            return Ok(new {
+                status = "Update successful",
+                ImageAdded = res
+            });
         }
 
         [HttpPost("add-employee")]
         [Authorize("admin")]
-        public async Task<ActionResult> AddEmployee(EmployeeDto emp) {
+        public async Task<ActionResult> AddEmployee([FromForm]EmployeeDto emp) {
             string employeeId = await autoGenerationEmployeeId(emp);
+
             string managerId = emp.ManagerId;
+
             if (emp.Role == "admin")
                 managerId = employeeId;
 
@@ -114,6 +224,17 @@ namespace PBL3.Controllers {
                 Id = employeeId,
                 ManagerId = managerId
             };
+
+            string? fileName = null;
+
+            bool res = false;
+
+            if (emp.ImageFile != null && emp.ImageFile.Length > 1) {
+                fileName = Guid.NewGuid() + Path.GetExtension(emp.ImageFile.FileName);
+
+                res = await _blobService.UploadBlobAsync(fileName, emp.ImageFile, _containerName);
+            }
+
             User user = new User {
                 Id = employeeId,
                 FirstName = emp.FirstName,
@@ -123,7 +244,8 @@ namespace PBL3.Controllers {
                 PhoneNumber = emp.PhoneNumber,
                 Email = emp.Email,
                 Address = emp.Address,
-                Role = emp.Role
+                Role = emp.Role,
+                ImageName = fileName
             };
             Titles title = new Titles {
                 EmployeeId = employeeId,
@@ -134,7 +256,7 @@ namespace PBL3.Controllers {
             DateTime fromDate = new DateTime(DateTime.Now.Year, emp.DateIn.Month, emp.DateIn.Day);
             Salaries salarie = new Salaries {
                 Id = employeeId,
-                Salary = emp.slary,
+                Salary = emp.salary,
                 FromDate = fromDate,
                 ToDate = fromDate.AddMonths(1)
             };
@@ -146,17 +268,32 @@ namespace PBL3.Controllers {
 
             await _context.SaveChangesAsync();
 
-            return Ok("Added!");
+            return Ok(new {
+                status = "Add successful",
+                ImageAdded = res
+            });
         }
 
         [HttpDelete("delete-employee/{id}")]
         [Authorize("admin")]
         public async Task<ActionResult> DeleteEmployee(string id) { 
             var user = await _context.Users.FindAsync(id);
+
+            if (user == null)
+                return BadRequest("Employee doesn't exist!");
+
+            bool? res = null;
+
+            if (user.ImageName != null)
+                res = await _blobService.DeleteBlobAsync(user.ImageName, _containerName);
+
             _context.Users.Remove(user);
             await _context.SaveChangesAsync();
 
-            return Ok("Deleted");
+            return Ok(new {
+                status = "Delete successful",
+                ImageDeleted = res
+            });
         }
 
         private async Task<string> autoGenerationEmployeeId(EmployeeDto employeeDto) {
@@ -194,6 +331,25 @@ namespace PBL3.Controllers {
                 };
             }
             return null;
+        }
+
+        private async Task<bool> SaveImage(string userId, IFormFile file) {
+            var user = _context.Users.Find(userId);
+
+            if (file == null || file.Length < 1)
+                return false;
+
+            var fileName = Guid.NewGuid() + Path.GetExtension(file.FileName);
+
+            var res = await _blobService.UploadBlobAsync(fileName, file, _containerName);
+
+            if (res) {
+                user.ImageName = fileName;
+                await _context.SaveChangesAsync();
+                return true;
+            }
+
+            return false;
         }
     }
 }

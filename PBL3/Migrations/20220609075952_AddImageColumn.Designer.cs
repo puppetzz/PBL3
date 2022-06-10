@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using PBL3.Data;
 
@@ -11,9 +12,10 @@ using PBL3.Data;
 namespace PBL3.Migrations
 {
     [DbContext(typeof(ShopGuitarContext))]
-    partial class ShopGuitarContextModelSnapshot : ModelSnapshot
+    [Migration("20220609075952_AddImageColumn")]
+    partial class AddImageColumn
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -31,32 +33,14 @@ namespace PBL3.Migrations
                         .IsRequired()
                         .HasColumnType("varbinary(max)");
 
-                    b.Property<string>("PasswordResetToken")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<byte[]>("PasswordSalt")
                         .IsRequired()
                         .HasColumnType("varbinary(max)");
-
-                    b.Property<DateTime?>("ResetTokenExpires")
-                        .HasColumnType("datetime2");
 
                     b.Property<string>("UserId")
                         .IsRequired()
                         .HasMaxLength(9)
                         .HasColumnType("nvarchar(9)");
-
-                    b.Property<string>("VerificationToken")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime?>("VerifiedAccountAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("VerifiedResetPasswordAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("VerifyTokenExpires")
-                        .HasColumnType("datetime2");
 
                     b.HasKey("UserName");
 
@@ -290,7 +274,7 @@ namespace PBL3.Migrations
                     b.Property<bool>("Gender")
                         .HasColumnType("bit");
 
-                    b.Property<string>("ImageName")
+                    b.Property<string>("Imagename")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("LastName")

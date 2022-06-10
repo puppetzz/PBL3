@@ -62,13 +62,13 @@ namespace PBL3.Controllers {
 
         [HttpPost("add-notification")]
         [Authorize(Roles ="admin")]
-        public async Task<ActionResult> AddNotification(NotificationDto notificationDto) {
+        public async Task<ActionResult> AddNotification(NotificationAddDto notificationDto) {
             Notification notification = new Notification {
                 NotificationId = await generationNewNotificationId(),
                 ManagerIdPost = getCurrentEmployeeId(),
                 TitleName = notificationDto.TitleName,
                 Content = notificationDto.Content,
-                DatePost = notificationDto.DatePost,
+                DatePost = DateTime.UtcNow.AddHours(7)
             };
             
             await _context.Notifications.AddAsync(notification);
@@ -79,7 +79,7 @@ namespace PBL3.Controllers {
 
         [HttpPut("update-notification")]
         [Authorize(Roles ="admin")]
-        public async Task<ActionResult> UpdateNotification(NotificationDto notificationDto) {
+        public async Task<ActionResult> UpdateNotification(NotificationUpdateDto notificationDto) {
             if (notificationDto.NotificationId == null)
                 return BadRequest("NotificationId Can't be Null!");
 
@@ -91,7 +91,7 @@ namespace PBL3.Controllers {
             
             notification.TitleName = notificationDto.TitleName;
             notification.Content = notificationDto.Content;
-            notification.DateUpdate = notificationDto.DateUpdate;
+            notification.DateUpdate = DateTime.UtcNow.AddHours(7);
             notification.ManagerIdUpdated = getCurrentEmployeeId();
 
             await _context.SaveChangesAsync();

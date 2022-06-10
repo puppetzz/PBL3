@@ -9,6 +9,12 @@ namespace PBL3.Models {
         public string UserName { get; set; }
         public byte[] PasswordHash { get; set; }
         public byte[] PasswordSalt { get; set; }
+        public string? VerificationToken { get; set; }
+        public DateTime? VerifyTokenExpires { get; set; }
+        public DateTime? VerifiedAccountAt { get; set; }
+        public string? PasswordResetToken { get; set; }
+        public DateTime? ResetTokenExpires { get; set; }
+        public DateTime? VerifiedResetPasswordAt { get; set; }
 
         [StringLength(9)]
         [ForeignKey("User")]

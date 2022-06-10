@@ -12,10 +12,14 @@ namespace PBL3.Models {
         public string EmployeeId { get; set; }
         public decimal TotalPrice { get; set; }
         public DateTime Date { get; set; }
+        [ForeignKey("Customer")]
+        public string CustomerId { get; set; }
 
         [JsonIgnore]
         public virtual Employee Employee { get; set; }
         [JsonIgnore]
         public virtual ICollection<ReceiptCommodity> ReceiptCommodities { get; set; }
+        [JsonIgnore]
+        public virtual Customer Customer { get; set; }
     }
 }

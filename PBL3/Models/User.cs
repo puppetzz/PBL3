@@ -18,10 +18,14 @@ namespace PBL3.Models {
         public string Email { get; set; }
         public string Address { get; set; }
         public string Role { get; set; }
+        public string? ImageName { get; set; }
 
         [JsonIgnore]
         public virtual Account Account { get; set; }
         [JsonIgnore]
         public virtual Employee Employee { get; set; }
+
+        [NotMapped]
+        public IFormFile ImageFile { get; set; }
     }
 }

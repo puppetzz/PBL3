@@ -13,9 +13,13 @@ namespace PBL3.Models {
         public string Name { get; set; }
         public decimal Price { get; set; }
         public string warrantyTime { get; set; }
+        public string? ImageName { get; set; }
 
         [JsonIgnore]
         public virtual ICollection<ReceiptCommodity> ReceiptCommodities { get; set; }
+
+        [NotMapped]
+        public IFormFile ImageFile { get; set; }
     }
 }
 

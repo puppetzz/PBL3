@@ -12,7 +12,7 @@
     },
     "resourceGroupLocation": {
       "type": "string",
-      "defaultValue": "centralus",
+      "defaultValue": "koreacentral",
       "metadata": {
         "_parameterType": "location",
         "description": "Location of the resource group. Resource groups could have different location than resources."
@@ -51,24 +51,23 @@
             {
               "kind": "v12.0",
               "location": "[parameters('resourceLocation')]",
-              "name": "pbl-server",
+              "name": "shop-guitar",
               "type": "Microsoft.Sql/servers",
               "apiVersion": "2017-10-01-preview"
             },
             {
               "sku": {
-                "name": "GP_Gen5",
-                "tier": "GeneralPurpose",
-                "family": "Gen5",
-                "capacity": 2
+                "name": "Basic",
+                "tier": "Basic",
+                "capacity": 5
               },
-              "kind": "v12.0,user,vcore",
+              "kind": "v12.0,user",
               "location": "[parameters('resourceLocation')]",
-              "name": "pbl-server/ShopGuitarDB",
+              "name": "shop-guitar/ShopGuitarDB",
               "type": "Microsoft.Sql/servers/databases",
               "apiVersion": "2017-10-01-preview",
               "dependsOn": [
-                "pbl-server"
+                "shop-guitar"
               ]
             }
           ]
