@@ -9,6 +9,9 @@ namespace PBL3.Models {
         public string UserName { get; set; }
         public byte[] PasswordHash { get; set; }
         public byte[] PasswordSalt { get; set; }
+        public string RefreshToken { get; set; } = string.Empty;
+        public DateTime TokenCreated { get; set; }
+        public DateTime TokenExpires { get; set; }
         public string? VerificationToken { get; set; }
         public DateTime? VerifyTokenExpires { get; set; }
         public DateTime? VerifiedAccountAt { get; set; }

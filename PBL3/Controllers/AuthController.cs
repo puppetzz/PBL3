@@ -37,7 +37,9 @@ namespace PBL3.Controllers {
         [HttpPost("register")]
         [AllowAnonymous]
         public async Task<IActionResult> Register([FromForm] UserRegisterDto request) {
-            CreatePasswordHash(request.Password, out byte[] passwordHash, out byte[] passwordSalt);
+            CreatePasswordHash(request.Password
+                , out byte[] passwordHash
+                , out byte[] passwordSalt);
 
             string verificationToken = CreateRandomToken();
 
@@ -55,7 +57,8 @@ namespace PBL3.Controllers {
                     var res = await SaveImage(request.UserId, request.ImageFile);
                 }
 
-                var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == account.UserId);
+                var user = await _context.Users
+                    .FirstOrDefaultAsync(u => u.Id == account.UserId);
                 if (user == null) {
                     return BadRequest("User does not exist.");
                 }
@@ -79,7 +82,7 @@ namespace PBL3.Controllers {
             return BadRequest("Account already exists or UserId not exists");
         }
 
-        [HttpGet("refresh-verify-account-token/{userId}")]
+        [HttpPost("refresh-verify-account-token/{userId}")]
         public async Task<IActionResult> RefreshVerifyToken(string userId) {
             var account = await _context.Accounts.FirstOrDefaultAsync(a => a.UserId == userId);
 
@@ -103,7 +106,8 @@ namespace PBL3.Controllers {
 
         [HttpPost("verify-account")]
         public async Task<IActionResult> VerifyAccount(string token) {
-            var account = await _context.Accounts.FirstOrDefaultAsync(a => a.VerificationToken == token);
+            var account = await _context.Accounts
+                .FirstOrDefaultAsync(a => a.VerificationToken == token);
             if (account == null || account.VerifyTokenExpires < DateTime.UtcNow.AddHours(7))
                 return BadRequest("Invalid token.");
 
@@ -121,7 +125,8 @@ namespace PBL3.Controllers {
                 return BadRequest("User Name not Found");
             }
 
-            var account = await _context.Accounts.FirstOrDefaultAsync(a => a.UserName == request.UserName);
+            var account = await _context.Accounts
+                .FirstOrDefaultAsync(a => a.UserName == request.UserName);
 
             if (account != null) {
                 if (!verifyPassWordHash(request.Password, account.PasswordHash, account.PasswordSalt)) {
@@ -134,12 +139,72 @@ namespace PBL3.Controllers {
 
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == account.UserId);
 
-            if (user != null) {
-                var token = createToken(user);
-                return Ok(token);
+            if (user == null) 
+                return BadRequest("User Not Found!");
+
+            var token = createToken(user);
+
+            var refreshToken = GenerateRefreshToken();
+            await SetRefreshTokenAsync(account.UserName, refreshToken);
+
+            return Ok(token);
+        }
+
+        [HttpPost("refresh-token")]
+        public async Task<ActionResult<string>> RefreshToken(string userId) {
+            var refreshToken = Request.Cookies["refreshToken"];
+
+            var account = await _context.Accounts
+                .FirstOrDefaultAsync(a => a.UserId == userId);
+
+            if (account == null)
+                return BadRequest("Account does not exist!");
+
+            if (!account.RefreshToken.Equals(refreshToken))
+                return Unauthorized("invalid Refresh Token.");
+
+            if (account.TokenExpires < DateTime.UtcNow.AddHours(7))
+                return Unauthorized("Refresh Token Expired");
+
+            var user = _context.Users.FirstOrDefault(u => u.Id == userId);
+
+            if (user == null)
+                return BadRequest("User does not exist.");
+
+            string token = createToken(user);
+            var newRefreshToken = GenerateRefreshToken();
+            await SetRefreshTokenAsync(user.Id, newRefreshToken);
+
+            return Ok(token);
+        }
+
+        private RefreshToken GenerateRefreshToken() {
+            var refreshToken = new RefreshToken {
+                Token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64)),
+                Expires = DateTime.UtcNow.AddHours(7).AddDays(1),
+                Created = DateTime.UtcNow.AddHours(7)
+            };
+
+            return refreshToken;
+        }
+
+        private async Task SetRefreshTokenAsync(string userName,RefreshToken refreshToken) {
+            var cookieOptions = new CookieOptions {
+                HttpOnly = true,
+                Expires = refreshToken.Expires
+            };
+
+            Response.Cookies.Append("refreshToken", refreshToken.Token, cookieOptions);
+
+            var account = await _context.Accounts
+                .FirstOrDefaultAsync(a => a.UserName == userName);
+            if (account != null) { 
+                account.RefreshToken = refreshToken.Token;
+                account.TokenCreated = refreshToken.Created;
+                account.TokenExpires = refreshToken.Expires;
             }
 
-            return BadRequest("User Not Found!");
+            await _context.SaveChangesAsync();
         }
 
         [HttpPost("forgot-password")]
@@ -228,7 +293,7 @@ namespace PBL3.Controllers {
             return Ok("Password successfully change.");
         }
 
-        [HttpGet("refresh-reset-password-token/{userId}")]
+        [HttpPost("refresh-reset-password-token/{userId}")]
         public async Task<IActionResult> RefreshResetPasswordToken(string userId) {
             var account = await _context.Accounts.FirstOrDefaultAsync(a => a.UserId == userId);
 
@@ -272,7 +337,7 @@ namespace PBL3.Controllers {
 
             var token = new JwtSecurityToken(
                 claims: claims,
-                expires: DateTime.UtcNow.AddHours(7).AddDays(7),
+                expires: DateTime.UtcNow.AddHours(7).AddDays(15),
                 signingCredentials: credentials);
             var jwt = new JwtSecurityTokenHandler().WriteToken(token);
 
