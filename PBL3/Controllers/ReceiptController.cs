@@ -126,40 +126,49 @@ namespace PBL3.Controllers {
                 });
             }
 
-            Customer customer = new Customer {
-                CustomerId = await generationNewCustomerId(),
-                Name = receiptDto.CustomerName,
-                PhoneNumber = receiptDto.CustomerPhoneNumber,
-                Address = receiptDto.CustomerAddress
-            };
+            var customer = await _context.Customers.FirstOrDefaultAsync(c => c.PhoneNumber == receiptDto.CustomerPhoneNumber);
+
+            string newCustomerId;
+
+            if (customer == null) {
+                newCustomerId = await generationNewCustomerId();
+                await _context.Customers.AddAsync(new Customer {
+                    CustomerId = newCustomerId,
+                    Name = receiptDto.CustomerName,
+                    PhoneNumber = receiptDto.CustomerPhoneNumber,
+                    Address = receiptDto.CustomerAddress
+                });
+            }
+            else
+                newCustomerId = customer.CustomerId;
 
             Receipt receipt = new Receipt {
                 ReceiptId = newId,
                 EmployeeId = getCurrentEmployeeId(),
                 TotalPrice = totalPrice,
-                CustomerId = customer.CustomerId,
+                CustomerId = newCustomerId,
                 Date = DateTime.UtcNow.AddHours(7)
             };
 
             await _context.Receipts.AddAsync(receipt);
             await _context.ReceiptCommodities.AddRangeAsync(receiptCommodities);
-            await _context.Customers.AddAsync(customer);
-
+            
             await _context.SaveChangesAsync();
 
             return Ok("Added!");
         }
 
         [HttpDelete("delete-receipt/{id}")]
-        [Authorize("admin")]
+        [Authorize(Roles ="admin")]
         public async Task<ActionResult> Delete(string id) {
-            var receipt = await _context.Receipts.FirstOrDefaultAsync(r => r.ReceiptId == id);
+            var receipt = await _context.Receipts.FindAsync(id);
             if (receipt == null)
                 return BadRequest("Receipt does not exists!");
 
             _context.Receipts.Remove(receipt);
-            await _context.SaveChangesAsync();
 
+            await _context.SaveChangesAsync();
+            
             return Ok("Deleted!");
         }
 
@@ -179,18 +188,17 @@ namespace PBL3.Controllers {
             int newId = 0;
             if (lastReceipt != null) {
                 string id = lastReceipt.ReceiptId;
-                newId = Convert.ToInt32(id.Substring(id.Length - 3));
-                if (newId < 999)
+                newId = Convert.ToInt32(id.Substring(id.Length - 5));
+                if (newId < 99999)
                     newId += 1;
                 else
                     newId = 1;
             } else {
                 newId = 1;
             }
-            return $"RC{DateTime.Now.Day}" +
-                $"{DateTime.Now.Month}" +
-                $"{DateTime.Now.Year.ToString().Substring(2)}" +
-                $"{newId:D3}";
+            return $"RC{DateTime.Now.Year.ToString().Substring(2)}" +
+                $"{DateTime.Now.Month:D2}" +
+                $"{newId:D5}";
         }
 
         private async Task<string> generationNewCustomerId() {
@@ -198,16 +206,16 @@ namespace PBL3.Controllers {
             int newId = 0;
             if (lastReceipt != null) {
                 string id = lastReceipt.ReceiptId;
-                newId = Convert.ToInt32(id.Substring(id.Length - 3));
-                if (newId < 999)
+                newId = Convert.ToInt32(id.Substring(id.Length - 4));
+                if (newId < 9999)
                     newId += 1;
                 else
                     newId = 1;
             } else {
                 newId = 1;
             }
-            return $"C{DateTime.Now.Day}" +
-                $"{DateTime.Now.Month}" +
+            return $"C{DateTime.Now.Year.ToString().Substring(2)}" +
+                $"{DateTime.Now.Month:D2}" +
                 $"{newId:D4}";
         }
 
