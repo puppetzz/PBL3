@@ -3,10 +3,10 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PBL3.Data;
-using PBL3.Models;
 using PBL3.DTO;
-using System.Security.Claims;
+using PBL3.Models;
 using PBL3.Service;
+using System.Security.Claims;
 
 namespace PBL3.Controllers {
     [Route("api/[controller]")]
@@ -146,6 +146,7 @@ namespace PBL3.Controllers {
             await _context.Customers.AddAsync(customer);
 
             await _context.SaveChangesAsync();
+
             return Ok("Added!");
         }
 
