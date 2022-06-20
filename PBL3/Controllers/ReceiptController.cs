@@ -37,7 +37,7 @@ namespace PBL3.Controllers {
                         c.PhoneNumber,
                         c.Address
                     }).FirstOrDefault(),
-                    commodtiy = _context.ReceiptCommodities
+                    commodity = _context.ReceiptCommodities
                         .Where(rc => rc.ReceiptId == r.ReceiptId)
                         .Select(rc => new {
                             rc.CommodityId,
@@ -77,7 +77,7 @@ namespace PBL3.Controllers {
                         c.PhoneNumber,
                         c.Address
                     }).FirstOrDefault(),
-                    commodtiy = _context.ReceiptCommodities
+                    commodity = _context.ReceiptCommodities
                         .Where(rc => rc.ReceiptId == r.ReceiptId)
                         .Select(rc => new {
                             rc.CommodityId,
@@ -102,7 +102,8 @@ namespace PBL3.Controllers {
             return Ok(receipt);
         }
 
-        [HttpPost("add-receipt")]
+        [HttpPost]
+        [Route("add-receipt")]
         [Authorize(Roles ="admin, employee")]
         public async Task<ActionResult> AddReceipt(ReceiptDto receiptDto) {
             List<ReceiptCommodity> receiptCommodities = new List<ReceiptCommodity>();
@@ -112,7 +113,8 @@ namespace PBL3.Controllers {
             string newId = await generationNewReceiptId();
 
             foreach (Tuple<string, int> commodity in receiptDto.Commodity) {
-                var commoditydb = await _context.Commodities.FirstOrDefaultAsync(c => c.CommodityId == commodity.Item1);
+                var commoditydb = await _context.Commodities
+                    .FirstOrDefaultAsync(c => c.CommodityId == commodity.Item1);
                 if (commoditydb == null)
                     return BadRequest("Commodity does not exist!");
                 totalPrice += commoditydb.Price * commodity.Item2;

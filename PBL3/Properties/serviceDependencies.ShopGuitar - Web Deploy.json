@@ -5,6 +5,13 @@
       "resourceId": "/subscriptions/[parameters('subscriptionId')]/resourceGroups/[parameters('resourceGroupName')]/providers/Microsoft.Sql/servers/shop-guitar/databases/ShopGuitarDB",
       "type": "mssql.azure",
       "connectionId": "ConnectionStrings:DefaultConnection"
+    },
+    "storage1": {
+      "secretStore": "AzureAppSettings",
+      "resourceId": "/subscriptions/[parameters('subscriptionId')]/resourceGroups/[parameters('resourceGroupName')]/providers/Microsoft.Storage/storageAccounts/shopguitar",
+      "type": "storage.azure",
+      "connectionId": "ConnectionStrings:BlobConnection",
+      "dynamicId": null
     }
   }
 }

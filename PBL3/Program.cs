@@ -7,6 +7,7 @@ using PBL3.Data;
 using PBL3.Service;
 using Swashbuckle.AspNetCore.Filters;
 using System.Text;
+using Microsoft.Extensions.Azure;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -45,6 +46,10 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJw
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration.GetSection("Jwt:Token").Value))
         };
     });
+builder.Services.AddAzureClients(clientBuilder => {
+    clientBuilder.AddBlobServiceClient(builder.Configuration["ConnectionStrings:BlobConnection:blob"], preferMsi: true);
+    clientBuilder.AddQueueServiceClient(builder.Configuration["ConnectionStrings:BlobConnection:queue"], preferMsi: true);
+});
 
 var app = builder.Build();
 
