@@ -173,7 +173,7 @@ namespace PBL3.Controllers {
 
             var salary = _context.Salaries.Find(emp.EmployeeId);
 
-            if (employee == null || user == null || title == null) {
+            if (employee == null || user == null) {
                 return BadRequest("Employee not found!");
             }
 
@@ -197,10 +197,31 @@ namespace PBL3.Controllers {
             user.PhoneNumber = emp.PhoneNumber;
             user.Email = emp.Email;
             user.Address = emp.Address;
-            title.Name = emp.TitleName;
-            title.DateIn = emp.DateIn;
-            title.DateOut = emp.DateOut;
-            salary.Salary = emp.salary;
+
+            if (title == null) {
+                await _context.Titles.AddAsync(new Titles {
+                    EmployeeId = emp.EmployeeId,
+                    Name = emp.TitleName,
+                    DateIn = emp.DateIn,
+                    DateOut = emp.DateOut
+                });
+            } else {
+                title.Name = emp.TitleName;
+                title.DateIn = emp.DateIn;
+                title.DateOut = emp.DateOut;
+            }
+
+            if (salary == null) {
+                await _context.Salaries.AddAsync(new Salaries {
+                    Id = emp.EmployeeId,
+                    Salary = emp.salary,
+                    FromDate = DateTime.UtcNow.AddHours(7),
+                    ToDate = DateTime.UtcNow.AddHours(7).AddMonths(1)
+                });
+            } else {
+                salary.Salary = emp.salary;
+            }
+
 
             await _context.SaveChangesAsync();
 
@@ -211,7 +232,7 @@ namespace PBL3.Controllers {
         }
 
         [HttpPost("add-employee")]
-        [Authorize("admin")]
+        [Authorize(Roles="admin")]
         public async Task<ActionResult> AddEmployee([FromForm]EmployeeDto emp) {
             string employeeId = await autoGenerationEmployeeId(emp);
 
@@ -275,7 +296,7 @@ namespace PBL3.Controllers {
         }
 
         [HttpDelete("delete-employee/{id}")]
-        [Authorize("admin")]
+        [Authorize(Roles="admin")]
         public async Task<ActionResult> DeleteEmployee(string id) { 
             var user = await _context.Users.FindAsync(id);
 
