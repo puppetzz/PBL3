@@ -265,7 +265,7 @@ namespace PBL3.Controllers {
                 PhoneNumber = emp.PhoneNumber,
                 Email = emp.Email,
                 Address = emp.Address,
-                Role = emp.Role,
+                Role = emp.Role.ToLower(),
                 ImageName = fileName
             };
             Titles title = new Titles {
@@ -290,7 +290,7 @@ namespace PBL3.Controllers {
             await _context.SaveChangesAsync();
 
             return Ok(new {
-                status = "Add successful",
+                status = "Add successfull",
                 ImageAdded = res
             });
         }

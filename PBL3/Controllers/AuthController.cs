@@ -104,7 +104,7 @@ namespace PBL3.Controllers {
             return Ok("Please check your email");
         }
 
-        [HttpPost("verify-account")]
+        [HttpPost("verify-account/{token}")]
         public async Task<IActionResult> VerifyAccount(string token) {
             var account = await _context.Accounts
                 .FirstOrDefaultAsync(a => a.VerificationToken == token);
@@ -150,7 +150,7 @@ namespace PBL3.Controllers {
             return Ok(token);
         }
 
-        [HttpPost("refresh-token")]
+        [HttpPost("refresh-token/{userId}")]
         public async Task<ActionResult<string>> RefreshToken(string userId) {
             var refreshToken = Request.Cookies["refreshToken"];
 
@@ -207,7 +207,7 @@ namespace PBL3.Controllers {
             await _context.SaveChangesAsync();
         }
 
-        [HttpPost("forgot-password")]
+        [HttpPost("forgot-password/{email}")]
         public async Task<IActionResult> ForgotPassword(string email) {
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
             if (user == null) {
@@ -233,7 +233,7 @@ namespace PBL3.Controllers {
             return Ok("Please check your email");
         }
 
-        [HttpPost("verify-reset-password")]
+        [HttpPost("verify-reset-password/{token}")]
         public async Task<IActionResult> VerifyResetPassword(string token) {
             var account = await _context.Accounts.FirstOrDefaultAsync(a => a.PasswordResetToken == token);
 
