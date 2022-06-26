@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using PBL3.Data;
 
@@ -11,9 +12,10 @@ using PBL3.Data;
 namespace PBL3.Migrations
 {
     [DbContext(typeof(ShopGuitarContext))]
-    partial class ShopGuitarContextModelSnapshot : ModelSnapshot
+    [Migration("20220625071805_addColumnIsSalesToReceipt")]
+    partial class addColumnIsSalesToReceipt
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -112,9 +114,9 @@ namespace PBL3.Migrations
                     b.ToTable("Commodities");
                 });
 
-            modelBuilder.Entity("PBL3.Models.Contact", b =>
+            modelBuilder.Entity("PBL3.Models.Customer", b =>
                 {
-                    b.Property<string>("ContactId")
+                    b.Property<string>("CustomerId")
                         .HasMaxLength(9)
                         .HasColumnType("nvarchar(9)");
 
@@ -130,9 +132,9 @@ namespace PBL3.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.HasKey("ContactId");
+                    b.HasKey("CustomerId");
 
-                    b.ToTable("Contacts");
+                    b.ToTable("Customers");
                 });
 
             modelBuilder.Entity("PBL3.Models.Employee", b =>
@@ -192,12 +194,12 @@ namespace PBL3.Migrations
                     b.Property<string>("ReceiptId")
                         .HasColumnType("nvarchar(450)");
 
-                    b.Property<string>("ContactId")
+                    b.Property<string>("CustomerId")
                         .IsRequired()
                         .HasColumnType("nvarchar(9)");
 
                     b.Property<DateTime>("Date")
-                        .HasColumnType("date");
+                        .HasColumnType("datetime2");
 
                     b.Property<string>("EmployeeId")
                         .IsRequired()
@@ -212,7 +214,7 @@ namespace PBL3.Migrations
 
                     b.HasKey("ReceiptId");
 
-                    b.HasIndex("ContactId");
+                    b.HasIndex("CustomerId");
 
                     b.HasIndex("EmployeeId");
 
@@ -366,9 +368,9 @@ namespace PBL3.Migrations
 
             modelBuilder.Entity("PBL3.Models.Receipt", b =>
                 {
-                    b.HasOne("PBL3.Models.Contact", "Contact")
+                    b.HasOne("PBL3.Models.Customer", "Customer")
                         .WithMany("Receipts")
-                        .HasForeignKey("ContactId")
+                        .HasForeignKey("CustomerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -378,7 +380,7 @@ namespace PBL3.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Contact");
+                    b.Navigation("Customer");
 
                     b.Navigation("Employee");
                 });
@@ -429,7 +431,7 @@ namespace PBL3.Migrations
                     b.Navigation("ReceiptCommodities");
                 });
 
-            modelBuilder.Entity("PBL3.Models.Contact", b =>
+            modelBuilder.Entity("PBL3.Models.Customer", b =>
                 {
                     b.Navigation("Receipts");
                 });

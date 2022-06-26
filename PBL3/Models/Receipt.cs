@@ -11,15 +11,17 @@ namespace PBL3.Models {
         [ForeignKey("Employee")]
         public string EmployeeId { get; set; }
         public decimal TotalPrice { get; set; }
+        [Column(TypeName = "date")]
         public DateTime Date { get; set; }
-        [ForeignKey("Customer")]
-        public string CustomerId { get; set; }
+        public string ContactId { get; set; }
+        public bool IsSales { get; set; }
 
         [JsonIgnore]
         public virtual Employee Employee { get; set; }
         [JsonIgnore]
         public virtual ICollection<ReceiptCommodity> ReceiptCommodities { get; set; }
         [JsonIgnore]
-        public virtual Customer Customer { get; set; }
+        [ForeignKey("ContactId")]
+        public virtual Contact Contact { get; set; }
     }
 }

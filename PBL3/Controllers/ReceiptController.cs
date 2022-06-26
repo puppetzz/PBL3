@@ -14,24 +14,67 @@ namespace PBL3.Controllers {
     public class ReceiptController : ControllerBase {
         private readonly ShopGuitarContext _context;
         private readonly IBlobService _blobService;
+        private readonly IReceiptService _receiptService;
         private const string _containerName = "images";
 
-        public ReceiptController(ShopGuitarContext context, IBlobService blobService) {
+        public ReceiptController(ShopGuitarContext context, IBlobService blobService, IReceiptService receiptService) {
             _context = context;
             _blobService = blobService;
+            _receiptService = receiptService;
         }
 
-        [HttpGet("receipt")]
+        [HttpGet("receipt-sales")]
         [Authorize]
-        public async Task<ActionResult> GetAllReceipt() {
+        public async Task<ActionResult> GetAllReceiptSales() {
             var receipts = await _context.Receipts
+                .Where(r => r.IsSales)
                 .Include(r => r.ReceiptCommodities)
                 .ThenInclude(r => r.Commodity)
                 .Select(r => new {
                     r.ReceiptId,
                     r.EmployeeId,
-                    customer = _context.Customers
-                    .Where(c => c.CustomerId == r.Customer.CustomerId)
+                    customer = _context.Contacts
+                    .Where(c => c.ContactId == r.Contact.ContactId)
+                    .Select(c => new {
+                        c.Name,
+                        c.PhoneNumber,
+                        c.Address
+                    }).FirstOrDefault(),
+                    commodity = _context.ReceiptCommodities
+                        .Where(rc => rc.ReceiptId == r.ReceiptId)
+                        .Select(rc => new {
+                            rc.CommodityId,
+                            rc.Commodity.Type,
+                            Quantity = Convert.ToInt32(
+                                _context.ReceiptCommodities
+                                .Where(o => o.ReceiptId == r.ReceiptId && o.CommodityId == rc.CommodityId)
+                                .Select(o => o.CommodityQuantity)
+                                .FirstOrDefault()),
+                            rc.Commodity.Brand,
+                            rc.Commodity.Name,
+                            rc.Commodity.Price,
+                            rc.Commodity.warrantyTime,
+                            ImageUri = rc.Commodity.ImageName != null ? _blobService.GetBlob(rc.Commodity.ImageName, _containerName) : null
+                        }).ToList(),
+                    r.TotalPrice,
+                    r.Date
+                }).ToListAsync();
+
+            return Ok(receipts);
+        }
+
+        [HttpGet("receipt-add-commodity")]
+        [Authorize]
+        public async Task<ActionResult> GetAllReceiptComodityAdded() {
+            var receipts = await _context.Receipts
+                .Where(r => !r.IsSales)
+                .Include(r => r.ReceiptCommodities)
+                .ThenInclude(r => r.Commodity)
+                .Select(r => new {
+                    r.ReceiptId,
+                    r.EmployeeId,
+                    Enterprise = _context.Contacts
+                    .Where(c => c.ContactId == r.Contact.ContactId)
                     .Select(c => new {
                         c.Name,
                         c.PhoneNumber,
@@ -70,8 +113,8 @@ namespace PBL3.Controllers {
                 .Select(r => new {
                     r.ReceiptId,
                     r.EmployeeId,
-                    customer = _context.Customers
-                    .Where(c => c.CustomerId == r.Customer.CustomerId)
+                    customer = _context.Contacts
+                    .Where(c => c.ContactId == r.Contact.ContactId)
                     .Select(c => new {
                         c.Name,
                         c.PhoneNumber,
@@ -104,58 +147,20 @@ namespace PBL3.Controllers {
 
         [HttpPost]
         [Route("add-receipt")]
-        [Authorize(Roles ="admin, employee")]
+        [Authorize(Roles = "admin, employee")]
         public async Task<ActionResult> AddReceipt(ReceiptDto receiptDto) {
-            List<ReceiptCommodity> receiptCommodities = new List<ReceiptCommodity>();
+            bool isSuccessful = false;
 
-            decimal totalPrice = 0;
-
-            string newId = await generationNewReceiptId();
-
-            foreach (Tuple<string, int> commodity in receiptDto.Commodity) {
-                var commoditydb = await _context.Commodities
-                    .FirstOrDefaultAsync(c => c.CommodityId == commodity.Item1);
-                if (commoditydb == null)
-                    return BadRequest("Commodity does not exist!");
-                totalPrice += commoditydb.Price * commodity.Item2;
-                commoditydb.Quantity -= commodity.Item2;
-                receiptCommodities.Add(new ReceiptCommodity {
-                    ReceiptId = newId,
-                    CommodityId = commodity.Item1,
-                    CommodityQuantity = commodity.Item2
-                });
+            try {
+                isSuccessful = await _receiptService.AddReceiptSales(receiptDto, getCurrentEmployeeId());
+            } catch (Exception ex) {
+                return BadRequest(ex.Message);
             }
 
-            var customer = await _context.Customers.FirstOrDefaultAsync(c => c.PhoneNumber == receiptDto.CustomerPhoneNumber);
+            if (isSuccessful)
+                return Ok("Added!");
 
-            string newCustomerId;
-
-            if (customer == null) {
-                newCustomerId = await generationNewCustomerId();
-                await _context.Customers.AddAsync(new Customer {
-                    CustomerId = newCustomerId,
-                    Name = receiptDto.CustomerName,
-                    PhoneNumber = receiptDto.CustomerPhoneNumber,
-                    Address = receiptDto.CustomerAddress
-                });
-            }
-            else
-                newCustomerId = customer.CustomerId;
-
-            Receipt receipt = new Receipt {
-                ReceiptId = newId,
-                EmployeeId = getCurrentEmployeeId(),
-                TotalPrice = totalPrice,
-                CustomerId = newCustomerId,
-                Date = DateTime.UtcNow.AddHours(7)
-            };
-
-            await _context.Receipts.AddAsync(receipt);
-            await _context.ReceiptCommodities.AddRangeAsync(receiptCommodities);
-            
-            await _context.SaveChangesAsync();
-
-            return Ok("Added!");
+            return BadRequest("Add failed!");
         }
 
         [HttpDelete("delete-receipt/{id}")]
@@ -175,7 +180,8 @@ namespace PBL3.Controllers {
         [HttpGet("sales/{fromDate}/{toDate}")]
         [Authorize]
         public async Task<ActionResult> TotalPrice(DateTime fromDate, DateTime toDate) { 
-            List<Receipt> receipt = await _context.Receipts.Where(r => r.Date > fromDate && r.Date < toDate).ToListAsync();
+            List<Receipt> receipt = await _context.Receipts
+                .Where(r => r.Date > fromDate && r.Date < toDate && r.IsSales).ToListAsync();
             decimal totalPrice = 0;
             foreach (Receipt r in receipt) {
                 totalPrice += r.TotalPrice;
@@ -183,40 +189,35 @@ namespace PBL3.Controllers {
             return Ok(totalPrice);
         }
 
-        private async Task<string> generationNewReceiptId() {
-            var lastReceipt = await _context.Receipts.OrderByDescending(r => r.ReceiptId).FirstOrDefaultAsync();
-            int newId = 0;
-            if (lastReceipt != null) {
-                string id = lastReceipt.ReceiptId;
-                newId = Convert.ToInt32(id.Substring(id.Length - 5));
-                if (newId < 99999)
-                    newId += 1;
-                else
-                    newId = 1;
-            } else {
-                newId = 1;
-            }
-            return $"RC{DateTime.Now.Year.ToString().Substring(2)}" +
-                $"{DateTime.Now.Month:D2}" +
-                $"{newId:D5}";
+        [HttpGet("revenue/{date}")]
+        [Authorize]
+        public async Task<ActionResult> GetRevenueOfTheDay(DateTime date) {
+            Decimal moneyIn = await _context.Receipts
+                .Where(r => r.Date == date && r.IsSales)
+                .SumAsync(r => r.TotalPrice);
+            Decimal moneyOut = await _context.Receipts
+                .Where(r => r.Date == date && !r.IsSales)
+                .SumAsync(r => r.TotalPrice);
+            return Ok(new {
+                MoneyIn = moneyIn,
+                MoneyOut = moneyOut
+            });
         }
 
-        private async Task<string> generationNewCustomerId() {
-            var lastReceipt = await _context.Receipts.OrderByDescending(r => r.ReceiptId).FirstOrDefaultAsync();
-            int newId = 0;
-            if (lastReceipt != null) {
-                string id = lastReceipt.ReceiptId;
-                newId = Convert.ToInt32(id.Substring(id.Length - 4));
-                if (newId < 9999)
-                    newId += 1;
-                else
-                    newId = 1;
-            } else {
-                newId = 1;
-            }
-            return $"C{DateTime.Now.Year.ToString().Substring(2)}" +
-                $"{DateTime.Now.Month:D2}" +
-                $"{newId:D4}";
+        [HttpGet("revenue/{fromDate}/{toDate}")]
+        [Authorize]
+        public async Task<ActionResult> GetReveue(DateTime fromDate, DateTime toDate) {
+            Decimal moneyIn = await _context.Receipts
+                .Where(r => r.Date > fromDate && r.Date < toDate && r.IsSales)
+                .SumAsync(r => r.TotalPrice);
+            Decimal moneyOut = await _context.Receipts
+                .Where(r => r.Date > fromDate && r.Date < toDate && !r.IsSales)
+                .SumAsync(r => r.TotalPrice);
+
+            return Ok(new {
+                MoneyIn = moneyIn,
+                MoneyOut = moneyOut
+            });
         }
 
         private string getCurrentEmployeeId() {

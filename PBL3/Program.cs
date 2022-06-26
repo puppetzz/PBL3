@@ -21,6 +21,8 @@ builder.Services.AddScoped(o => new BlobServiceClient(builder.Configuration.GetC
 
 builder.Services.AddScoped<IBlobService, BlobService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<IExcelService, ExcelService>();
+builder.Services.AddScoped<IReceiptService, ReceiptService>();
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options => {

@@ -6,6 +6,7 @@ using PBL3.Data;
 using PBL3.DTO;
 using PBL3.Models;
 using PBL3.Service;
+using System.Security.Claims;
 
 namespace PBL3.Controllers {
     [Route("api/[controller]")]
@@ -13,11 +14,18 @@ namespace PBL3.Controllers {
     public class CommodityController : ControllerBase {
         private readonly ShopGuitarContext _context;
         private readonly IBlobService _blobService;
+        private readonly IReceiptService _receiptService;
+        private readonly IExcelService _excelService;
         private const string _containerName = "images";
 
-        public CommodityController(ShopGuitarContext context, IBlobService blobService) {
+        public CommodityController(ShopGuitarContext context
+            , IBlobService blobService
+            , IReceiptService receiptService
+            , IExcelService excelService) {
             _context = context;
             _blobService = blobService;
+            _receiptService = receiptService;
+            _excelService = excelService;
         }
 
         [HttpGet("commodity-sold/{fromDate}/{toDate}")]
@@ -83,27 +91,168 @@ namespace PBL3.Controllers {
 
         [HttpPost("add-commodity")]
         [Authorize(Roles = "admin")]
-        public async Task<ActionResult> AddCommodity([FromForm]CommodityDto commodityDto) {
-            var addCommodity = await addCommodityAsync(commodityDto);
+        public async Task<ActionResult> AddCommodity([FromForm] AddCommodityDto commodity) {
+            var addCommodity = await addCommodityAsync(commodity);
 
-            if (addCommodity) {
+            ReceiptDto receiptDto = new ReceiptDto {
+                CustomerName = commodity.EnterpriseName,
+                CustomerPhoneNumber = commodity.EnterprisePhoneNumber,
+                CustomerAddress = commodity.EnterpriseAddress
+            };
+
+            receiptDto.Commodity = new List<Tuple<string, int>>();
+            receiptDto.Commodity.Add(new Tuple<string, int>(commodity.CommodityId, commodity.Quantity));
+
+            bool isAddReceiptSuccessful = false;
+            
+            List<AddCommodityDto> addCommodityDtos = new List<AddCommodityDto>();
+            addCommodityDtos.Add(commodity);
+
+            try {
+                isAddReceiptSuccessful = await _receiptService
+                    .AddReceiptIn(receiptDto, getCurrentEmployeeId(), addCommodityDtos);
+            } catch(Exception e) {
+                return BadRequest(e.Message);
+            }
+
+
+            if (addCommodity && isAddReceiptSuccessful) {
                 await _context.SaveChangesAsync();
                 return Ok("Added!");
             }
 
+
             return BadRequest("Failed!");
         }
 
-        [HttpPost("add-list-commodity")]
+        [HttpPost("add-list-commodity-with-image")]
         [Authorize(Roles = "admin")]
-        public async Task<ActionResult> AddCommodities(List<CommodityDto> commodityDtos) {
-            foreach (CommodityDto commodityDto in commodityDtos) {
-                var addCommodity = await addCommodityAsync(commodityDto);
+        public async Task<ActionResult> AddCommodities([FromForm]List<AddCommodityDto> commodityDtos) {
+            List<Tuple<string, int>> commodities = new List<Tuple<string, int>>();
+            List<AddCommodityDto> list = new List<AddCommodityDto>();
+            foreach (AddCommodityDto commodity in commodityDtos) {
+                var addCommodity = await addCommodityAsync(commodity);
 
-                if (!addCommodity) {
-                    return BadRequest("Failed!");
-                }
+                list.Add(commodity);
+
+                commodities.Add(new Tuple<string, int>(commodity.CommodityId, commodity.Quantity));
+
+                if (!addCommodity)
+                    return BadRequest("Add Failed!");
             }
+
+            ReceiptDto receiptDto = new ReceiptDto {
+                CustomerName = commodityDtos[0].EnterpriseName,
+                CustomerPhoneNumber = commodityDtos[0].EnterprisePhoneNumber,
+                CustomerAddress = commodityDtos[0].EnterpriseAddress
+            };
+
+            receiptDto.Commodity = new List<Tuple<string, int>>();
+            receiptDto.Commodity.AddRange(commodities);
+
+            bool isAddReceiptSuccessful = false;
+
+            try {
+                isAddReceiptSuccessful = await _receiptService
+                    .AddReceiptIn(receiptDto, getCurrentEmployeeId(), list);
+            } catch (Exception e) {
+                return BadRequest(e.Message);
+            }
+
+            if (!isAddReceiptSuccessful)
+                return BadRequest("Add Failed!");
+
+            await _context.SaveChangesAsync();
+
+            return Ok("Added!");
+        }
+
+        [HttpPost("add-list-commodity-without-image")]
+        [Authorize(Roles = "admin")]
+        public async Task<ActionResult> AddCommoditiesWithoutImage(List<CommodityWithoutImageDto> commodityDtos) {
+            List<Tuple<string, int>> commodities = new List<Tuple<string, int>>();
+            List<CommodityWithoutImageDto> list = new List<CommodityWithoutImageDto>();
+            foreach (CommodityWithoutImageDto commodity in commodityDtos) {
+                var addCommodity = await addCommodityWithoutImageAsync(commodity);
+
+                list.Add(commodity);
+
+                commodities.Add(new Tuple<string, int>(commodity.CommodityId, commodity.Quantity));
+
+                if (!addCommodity)
+                    return BadRequest("Add Failed!");
+            }
+
+            ReceiptDto receiptDto = new ReceiptDto {
+                CustomerName = commodityDtos[0].EnterpriseName,
+                CustomerPhoneNumber = commodityDtos[0].EnterprisePhoneNumber,
+                CustomerAddress = commodityDtos[0].EnterpriseAddress
+            };
+
+            receiptDto.Commodity = new List<Tuple<string, int>>();
+            receiptDto.Commodity.AddRange(commodities);
+
+            bool isAddReceiptSuccessful = false;
+
+            try {
+                isAddReceiptSuccessful = await _receiptService
+                    .AddReceiptInWithoutImage(receiptDto, getCurrentEmployeeId(), list);
+            } catch (Exception e) {
+                return BadRequest(e.Message);
+            }
+
+            if (!isAddReceiptSuccessful)
+                return BadRequest("Add Failed!");
+
+            await _context.SaveChangesAsync();
+
+            return Ok("Added!");
+        }
+
+        [HttpPost("add-commodity-from-excel-file")]
+        [Authorize(Roles = "admin")]
+        public async Task<ActionResult> AddCommoditiesFromExcelFile(IFormFile file) {
+            List<CommodityWithoutImageDto> commodityDtos = new List<CommodityWithoutImageDto>();
+
+            try {
+                commodityDtos = await _excelService.GetCommodityFormExcelAsync(file);
+            } catch (Exception e) {
+                return BadRequest(e);
+            }
+
+            List<Tuple<string, int>> commodities = new List<Tuple<string, int>>();
+            List<CommodityWithoutImageDto> list = new List<CommodityWithoutImageDto>();
+            foreach (CommodityWithoutImageDto commodity in commodityDtos) {
+                var addCommodity = await addCommodityWithoutImageAsync(commodity);
+
+                list.Add(commodity);
+
+                commodities.Add(new Tuple<string, int>(commodity.CommodityId, commodity.Quantity));
+
+                if (!addCommodity)
+                    return BadRequest("Add Failed!");
+            }
+
+            ReceiptDto receiptDto = new ReceiptDto {
+                CustomerName = commodityDtos[0].EnterpriseName,
+                CustomerPhoneNumber = commodityDtos[0].EnterprisePhoneNumber,
+                CustomerAddress = commodityDtos[0].EnterpriseAddress
+            };
+
+            receiptDto.Commodity = new List<Tuple<string, int>>();
+            receiptDto.Commodity.AddRange(commodities);
+
+            bool isAddReceiptSuccessful = false;
+
+            try {
+                isAddReceiptSuccessful = await _receiptService
+                    .AddReceiptInWithoutImage(receiptDto, getCurrentEmployeeId(), list);
+            } catch (Exception e) {
+                return BadRequest(e.Message);
+            }
+
+            if (!isAddReceiptSuccessful)
+                return BadRequest("Add Failed!");
 
             await _context.SaveChangesAsync();
 
@@ -179,33 +328,57 @@ namespace PBL3.Controllers {
             return Ok("Deleted!");
         }
 
-        private async Task<bool> addCommodityAsync(CommodityDto commodityDto) {
-            if (!_context.Commodities.Any(c => c.CommodityId == commodityDto.CommodityId)) {
+        private async Task<bool> addCommodityAsync(AddCommodityDto addCommodityDto) {
+            if (!_context.Commodities.Any(c => c.CommodityId == addCommodityDto.CommodityId)) {
                 string? fileName = null;
 
-                if (commodityDto.ImageFile != null && commodityDto.ImageFile.Length > 1) {
-                    fileName = Guid.NewGuid() + Path.GetExtension(commodityDto.ImageFile.FileName);
+                if (addCommodityDto.ImageFile != null && addCommodityDto.ImageFile.Length > 1) {
+                    fileName = Guid.NewGuid() + Path.GetExtension(addCommodityDto.ImageFile.FileName);
 
-                    var res = await _blobService.UploadBlobAsync(fileName, commodityDto.ImageFile, _containerName);
+                    var res = await _blobService.UploadBlobAsync(fileName, addCommodityDto.ImageFile, _containerName);
                 }
 
                 Commodity newCommodity = new Commodity {
-                    CommodityId = commodityDto.CommodityId,
-                    Type = commodityDto.Type,
-                    Quantity = commodityDto.Quantity,
-                    Brand = commodityDto.Brand,
-                    Name = commodityDto.Name,
-                    Price = commodityDto.Price,
-                    warrantyTime = commodityDto.warrantyTime,
+                    CommodityId = addCommodityDto.CommodityId,
+                    Type = addCommodityDto.Type,
+                    Quantity = addCommodityDto.Quantity,
+                    Brand = addCommodityDto.Brand,
+                    Name = addCommodityDto.Name,
+                    Price = addCommodityDto.Price,
+                    warrantyTime = addCommodityDto.warrantyTime,
                     ImageName = fileName
                 };
 
-                _context.Commodities.Add(newCommodity);
+                await _context.Commodities.AddAsync(newCommodity);
+                await _context.SaveChangesAsync();
                 return true;
             }
 
-            var commodity = await _context.Commodities.FindAsync(commodityDto.CommodityId);
-            commodity.Quantity += commodityDto.Quantity;
+            var commodityDto = await _context.Commodities.FindAsync(addCommodityDto.CommodityId);
+            commodityDto.Quantity += commodityDto.Quantity;
+
+            return true;
+        }
+
+        private async Task<bool> addCommodityWithoutImageAsync(CommodityWithoutImageDto addCommodityDto) {
+            if (!_context.Commodities.Any(c => c.CommodityId == addCommodityDto.CommodityId)) {
+                Commodity newCommodity = new Commodity {
+                    CommodityId = addCommodityDto.CommodityId,
+                    Type = addCommodityDto.Type,
+                    Quantity = addCommodityDto.Quantity,
+                    Brand = addCommodityDto.Brand,
+                    Name = addCommodityDto.Name,
+                    Price = addCommodityDto.Price,
+                    warrantyTime = addCommodityDto.warrantyTime,
+                };
+
+                await _context.Commodities.AddAsync(newCommodity);
+                await _context.SaveChangesAsync();
+                return true;
+            }
+
+            var commodityDto = await _context.Commodities.FindAsync(addCommodityDto.CommodityId);
+            commodityDto.Quantity += commodityDto.Quantity;
 
             return true;
         }
@@ -227,6 +400,17 @@ namespace PBL3.Controllers {
             }
 
             return false;
+        }
+
+        private string getCurrentEmployeeId() {
+            var identity = HttpContext.User.Identity as ClaimsIdentity;
+
+            if (identity == null)
+                return null;
+
+            var userClaims = identity.Claims;
+
+            return userClaims.FirstOrDefault(o => o.Type == ClaimTypes.NameIdentifier)?.Value;
         }
     }
 }

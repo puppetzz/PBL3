@@ -6,6 +6,7 @@ using PBL3.Models;
 using PBL3.DTO;
 using System.Security.Claims;
 using PBL3.Service;
+using OfficeOpenXml;
 
 namespace PBL3.Controllers {
     [Route("api/[Controller]")]
@@ -13,11 +14,13 @@ namespace PBL3.Controllers {
     public class EmployeeController : ControllerBase {
         private readonly ShopGuitarContext _context;
         private readonly IBlobService _blobService;
+        private readonly IExcelService _excelService;
         private const string _containerName = "images";
 
-        public EmployeeController(ShopGuitarContext context, IBlobService blobService) {
+        public EmployeeController(ShopGuitarContext context, IBlobService blobService, IExcelService excelService) {
             _context = context;
             _blobService = blobService;
+            _excelService = excelService;
         }
 
         [HttpGet("employee")]
@@ -233,7 +236,7 @@ namespace PBL3.Controllers {
 
         [HttpPost("add-employee")]
         [Authorize(Roles="admin")]
-        public async Task<ActionResult> AddEmployee([FromForm]EmployeeDto emp) {
+        public async Task<ActionResult> AddEmployee([FromForm]AddEmployeeDto emp) {
             string employeeId = await autoGenerationEmployeeId(emp);
 
             string managerId = emp.ManagerId;
@@ -295,8 +298,81 @@ namespace PBL3.Controllers {
             });
         }
 
+        [HttpPost("add-employee-from-excel-file")]
+        [Authorize(Roles ="admin")]
+        public async Task<ActionResult> ImportEmployeeFromExcel(IFormFile file) {
+            List<AddEmployeeDto> list = new List<AddEmployeeDto>();
+
+            try {
+                list = await _excelService.GetEmployeeFormExcelAsync(file);
+            } catch(Exception e) {
+                return BadRequest(e.Message);
+            }
+
+            foreach (AddEmployeeDto emp in list) {
+                string employeeId = await autoGenerationEmployeeId(emp);
+
+                string managerId = emp.ManagerId;
+
+                if (emp.Role == "admin")
+                    managerId = employeeId;
+
+                Employee employee = new Employee {
+                    Id = employeeId,
+                    ManagerId = managerId
+                };
+
+                string? fileName = null;
+
+                bool res = false;
+
+                if (emp.ImageFile != null && emp.ImageFile.Length > 1) {
+                    fileName = Guid.NewGuid() + Path.GetExtension(emp.ImageFile.FileName);
+
+                    res = await _blobService.UploadBlobAsync(fileName, emp.ImageFile, _containerName);
+                }
+
+                User user = new User {
+                    Id = employeeId,
+                    FirstName = emp.FirstName,
+                    LastName = emp.LastName,
+                    Gender = emp.Gender,
+                    DateOfBirth = emp.DateOfBirth,
+                    PhoneNumber = emp.PhoneNumber,
+                    Email = emp.Email,
+                    Address = emp.Address,
+                    Role = emp.Role.ToLower(),
+                    ImageName = fileName
+                };
+                Titles title = new Titles {
+                    EmployeeId = employeeId,
+                    Name = emp.TitleName,
+                    DateIn = emp.DateIn,
+                    DateOut = emp.DateOut
+                };
+                DateTime fromDate = new DateTime(DateTime.Now.Year, emp.DateIn.Month, emp.DateIn.Day);
+                Salaries salarie = new Salaries {
+                    Id = employeeId,
+                    Salary = emp.salary,
+                    FromDate = fromDate,
+                    ToDate = fromDate.AddMonths(1)
+                };
+
+                await _context.Employees.AddAsync(employee);
+                await _context.Users.AddAsync(user);
+                await _context.Titles.AddAsync(title);
+                await _context.Salaries.AddAsync(salarie);
+
+                await _context.SaveChangesAsync();
+
+            }
+            return Ok(new {
+                status = "Add successfull",
+            });
+        }
+
         [HttpDelete("delete-employee/{id}")]
-        [Authorize(Roles="admin")]
+        [Authorize(Roles ="admin")]
         public async Task<ActionResult> DeleteEmployee(string id) { 
             var user = await _context.Users.FindAsync(id);
 
@@ -317,7 +393,7 @@ namespace PBL3.Controllers {
             });
         }
 
-        private async Task<string> autoGenerationEmployeeId(EmployeeDto employeeDto) {
+        private async Task<string> autoGenerationEmployeeId(AddEmployeeDto employeeDto) {
             var lastEmployee = await _context.Employees.OrderByDescending(e => e.Id).FirstOrDefaultAsync();
             int newId = 0;
             if (lastEmployee != null) {
