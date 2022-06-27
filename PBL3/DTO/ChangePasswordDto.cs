@@ -7,6 +7,6 @@ namespace PBL3.DTO {
         [Required, MinLength(6, ErrorMessage = "Please enter at least 6 characters!")]
         public string NewPassword { get; set; } = string.Empty;
         [Required, Compare("NewPassword")]
-        public string ComfirmPassword { get; set; } = string.Empty;
+        public string ConfirmPassword { get; set; } = string.Empty;
     }
 }
