@@ -207,17 +207,22 @@ namespace PBL3.Controllers {
         [HttpGet("revenue/{fromDate}/{toDate}")]
         [Authorize]
         public async Task<ActionResult> GetReveue(DateTime fromDate, DateTime toDate) {
-            Decimal moneyIn = await _context.Receipts
-                .Where(r => r.Date > fromDate && r.Date < toDate && r.IsSales)
+            List<RevenueDto> revenues = new List<RevenueDto>();
+            for (DateTime d = fromDate; d < toDate; d = d.AddDays(1)) {
+                Decimal moneyIn = await _context.Receipts
+                .Where(r => r.Date == d && r.IsSales)
                 .SumAsync(r => r.TotalPrice);
-            Decimal moneyOut = await _context.Receipts
-                .Where(r => r.Date > fromDate && r.Date < toDate && !r.IsSales)
-                .SumAsync(r => r.TotalPrice);
+                Decimal moneyOut = await _context.Receipts
+                    .Where(r => r.Date == d && !r.IsSales)
+                    .SumAsync(r => r.TotalPrice);
+                revenues.Add(new RevenueDto {
+                    Date = d,
+                    MoneyIn = moneyIn,
+                    MoneyOut = moneyOut
+                });
+            }
 
-            return Ok(new {
-                MoneyIn = moneyIn,
-                MoneyOut = moneyOut
-            });
+            return Ok(revenues);
         }
 
         private string getCurrentEmployeeId() {
