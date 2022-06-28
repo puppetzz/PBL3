@@ -1,5 +1,6 @@
 ﻿using OfficeOpenXml;
 using PBL3.DTO;
+using PBL3.Models;
 
 namespace PBL3.Service {
     public class ExcelService : IExcelService {
@@ -40,7 +41,6 @@ namespace PBL3.Service {
             }
             return list;
         }
-
         public async Task<List<AddEmployeeDto>?> GetEmployeeFormExcelAsync(IFormFile file) {
             var list = new List<AddEmployeeDto>();
             using (var stream = new MemoryStream()) {
@@ -81,5 +81,6 @@ namespace PBL3.Service {
             }
             return list;
         }
+        
     }
 }

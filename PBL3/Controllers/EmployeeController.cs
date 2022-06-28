@@ -338,7 +338,7 @@ namespace PBL3.Controllers {
                     LastName = emp.LastName,
                     Gender = emp.Gender,
                     DateOfBirth = emp.DateOfBirth,
-                    PhoneNumber = emp.PhoneNumber,
+                    PhoneNumber = emp.PhoneNumber[0] == '0' ? emp.PhoneNumber : $"0{emp.PhoneNumber}",
                     Email = emp.Email,
                     Address = emp.Address,
                     Role = emp.Role.ToLower(),
@@ -391,6 +391,63 @@ namespace PBL3.Controllers {
                 status = "Delete successful",
                 ImageDeleted = res
             });
+        }
+
+        [HttpGet("export-employee-to-excel")]
+        [Authorize]
+        public async Task<ActionResult> ExportEmployee() {
+            var employee = await _context.Users
+                .ToListAsync();
+
+            byte[] fileContents;
+            ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
+            ExcelPackage Ep = new ExcelPackage();
+            ExcelWorksheet Sheet = Ep.Workbook.Worksheets.Add("Employee");
+            Sheet.Cells["A1"].Value = "Employee ID";
+            Sheet.Cells["B1"].Value = "Manager ID";
+            Sheet.Cells["C1"].Value = "First Name";
+            Sheet.Cells["D1"].Value = "Last Name";
+            Sheet.Cells["E1"].Value = "Gender";
+            Sheet.Cells["F1"].Value = "Date Of Birth";
+            Sheet.Cells["G1"].Value = "Phone Number";
+            Sheet.Cells["H1"].Value = "Email";
+            Sheet.Cells["K1"].Value = "Address";
+            Sheet.Cells["L1"].Value = "Role";
+
+            int row = 2;
+            foreach (var item in employee) {
+                Sheet.Cells[string.Format("A{0}", row)].Value = item.Id;
+                Sheet.Cells[string.Format("B{0}", row)].Value = _context.Employees
+                    .Where(e => e.Id == item.Id)
+                    .Select(e => e.ManagerId)
+                    .FirstOrDefault().ToString();
+                Sheet.Cells[string.Format("C{0}", row)].Value = item.FirstName;
+                Sheet.Cells[string.Format("D{0}", row)].Value = item.LastName;
+                Sheet.Cells[string.Format("E{0}", row)].Value = item.Gender ? "Male" : "Female";
+                Sheet.Cells[string.Format("F{0}", row)].Value = item.DateOfBirth;
+                Sheet.Cells[string.Format("G{0}", row)].Value = item.PhoneNumber;
+                Sheet.Cells[string.Format("H{0}", row)].Value = item.Email;
+                Sheet.Cells[string.Format("K{0}", row)].Value = item.Address;
+                Sheet.Cells[string.Format("L{0}", row)].Value = item.Role;
+                row++;
+            }
+
+            Sheet.Cells["A:AZ"].AutoFitColumns();
+            Response.Clear();
+            Response.ContentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+            fileContents = Ep.GetAsByteArray();
+
+            if (fileContents == null || fileContents.Length == 0) {
+                return NotFound();
+            }
+
+            string excelName = $"Employee-List-{DateTime.UtcNow.AddHours(7).ToString("yyyyMMddHHmmssfff")}.xlsx";
+
+            return File(
+                fileContents: fileContents,
+                contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                fileDownloadName: excelName
+            );
         }
 
         private async Task<string> autoGenerationEmployeeId(AddEmployeeDto employeeDto) {

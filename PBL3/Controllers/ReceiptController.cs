@@ -208,7 +208,7 @@ namespace PBL3.Controllers {
         [Authorize]
         public async Task<ActionResult> GetReveue(DateTime fromDate, DateTime toDate) {
             List<RevenueDto> revenues = new List<RevenueDto>();
-            for (DateTime d = fromDate; d < toDate; d = d.AddDays(1)) {
+            for (DateTime d = fromDate; d <= toDate; d = d.AddDays(1)) {
                 Decimal moneyIn = await _context.Receipts
                 .Where(r => r.Date == d && r.IsSales)
                 .SumAsync(r => r.TotalPrice);

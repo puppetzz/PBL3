@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using OfficeOpenXml;
 using PBL3.Data;
 using PBL3.DTO;
 using PBL3.Models;
@@ -16,36 +17,28 @@ namespace PBL3.Controllers {
         private readonly IBlobService _blobService;
         private readonly IReceiptService _receiptService;
         private readonly IExcelService _excelService;
+        private readonly ICommodityService _commodityService;
         private const string _containerName = "images";
 
         public CommodityController(ShopGuitarContext context
             , IBlobService blobService
             , IReceiptService receiptService
-            , IExcelService excelService) {
+            , IExcelService excelService
+            , ICommodityService commodityService) {
             _context = context;
             _blobService = blobService;
             _receiptService = receiptService;
             _excelService = excelService;
+            _commodityService = commodityService;
         }
 
         [HttpGet("commodity-sold/{fromDate}/{toDate}")]
         [Authorize]
         public async Task<ActionResult> CommoditySold(DateTime fromDate, DateTime toDate) {
-            List<ReceiptCommodity> receiptCommodity = await _context.ReceiptCommodities
-                .Where(r => r.Receipt.Date > fromDate && r.Receipt.Date < toDate)
-                .ToListAsync();
-            List<Commodity> commoditySold = new List<Commodity>();
-            foreach (ReceiptCommodity receipt in receiptCommodity) {
-                if (commoditySold.Any(c => c.CommodityId == receipt.CommodityId)) {
-                    commoditySold.FirstOrDefault(c => c.CommodityId == receipt.CommodityId).Quantity += receipt.CommodityQuantity;
-                } else {
-                    Commodity commodity = await _context.Commodities.FirstOrDefaultAsync(c => c.CommodityId == receipt.CommodityId);
-                    commodity.Quantity = receipt.CommodityQuantity;
-                    commoditySold.Add(commodity);
-                }
-            }
+            
+            List<Commodity> commoditiesSold = await _commodityService.GetCommoditiesSold(fromDate, toDate);
 
-            return Ok(commoditySold);
+            return Ok(commoditiesSold);
         }
 
         [HttpGet("commodity")]
@@ -326,6 +319,103 @@ namespace PBL3.Controllers {
             await _context.SaveChangesAsync();
 
             return Ok("Deleted!");
+        }
+
+        [HttpGet("export-commodities-sold-to-excel/{fromDate}/{toDate}")]
+        [Authorize]
+        public async Task<ActionResult> ExportCommoditesSold(DateTime fromDate, DateTime toDate) {
+            List<Commodity> commoditiesSold = await _commodityService.GetCommoditiesSold(fromDate, toDate);
+
+            byte[] fileContents;
+            ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
+            ExcelPackage Ep = new ExcelPackage();
+            ExcelWorksheet Sheet = Ep.Workbook.Worksheets.Add("Commodities-Sold");
+            Sheet.Cells["A1"].Value = "Commodity ID";
+            Sheet.Cells["B1"].Value = "Type";
+            Sheet.Cells["C1"].Value = "Quantity";
+            Sheet.Cells["D1"].Value = "Brand";
+            Sheet.Cells["E1"].Value = "Name";
+            Sheet.Cells["F1"].Value = "Price";
+            Sheet.Cells["G1"].Value = "Warranty Time";
+
+            int row = 2;
+            foreach (var item in commoditiesSold) {
+                Sheet.Cells[string.Format("A{0}", row)].Value = item.CommodityId;
+                Sheet.Cells[string.Format("B{0}", row)].Value = item.Type;
+                Sheet.Cells[string.Format("C{0}", row)].Value = item.Quantity;
+                Sheet.Cells[string.Format("D{0}", row)].Value = item.Brand;
+                Sheet.Cells[string.Format("E{0}", row)].Value = item.Name;
+                Sheet.Cells[string.Format("F{0}", row)].Value = item.Price;
+                Sheet.Cells[string.Format("G{0}", row)].Value = item.warrantyTime;
+                row++;
+            }
+
+
+            Sheet.Cells["A:AZ"].AutoFitColumns();
+            Response.Clear();
+            Response.ContentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+            fileContents = Ep.GetAsByteArray();
+
+            if (fileContents == null || fileContents.Length == 0) {
+                return NotFound();
+            }
+
+            string excelName = $"Commodities-Sold-List-{DateTime.UtcNow.AddHours(7).ToString("yyyyMMddHHmmssfff")}.xlsx";
+
+            return File(
+                fileContents: fileContents,
+                contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                fileDownloadName: excelName
+            );
+        }
+
+        [HttpGet("export-commodities-to-excel")]
+        [Authorize]
+        public async Task<ActionResult> ExportCommodites() {
+            List<Commodity> commoditiesSold = await _context.Commodities
+                .ToListAsync();
+
+            byte[] fileContents;
+            ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
+            ExcelPackage Ep = new ExcelPackage();
+            ExcelWorksheet Sheet = Ep.Workbook.Worksheets.Add("Commodities");
+            Sheet.Cells["A1"].Value = "Commodity ID";
+            Sheet.Cells["B1"].Value = "Type";
+            Sheet.Cells["C1"].Value = "Quantity";
+            Sheet.Cells["D1"].Value = "Brand";
+            Sheet.Cells["E1"].Value = "Name";
+            Sheet.Cells["F1"].Value = "Price";
+            Sheet.Cells["G1"].Value = "Warranty Time";
+
+            int row = 2;
+            foreach (var item in commoditiesSold) {
+                Sheet.Cells[string.Format("A{0}", row)].Value = item.CommodityId;
+                Sheet.Cells[string.Format("B{0}", row)].Value = item.Type;
+                Sheet.Cells[string.Format("C{0}", row)].Value = item.Quantity;
+                Sheet.Cells[string.Format("D{0}", row)].Value = item.Brand;
+                Sheet.Cells[string.Format("E{0}", row)].Value = item.Name;
+                Sheet.Cells[string.Format("F{0}", row)].Value = item.Price;
+                Sheet.Cells[string.Format("G{0}", row)].Value = item.warrantyTime;
+                row++;
+            }
+
+
+            Sheet.Cells["A:AZ"].AutoFitColumns();
+            Response.Clear();
+            Response.ContentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+            fileContents = Ep.GetAsByteArray();
+
+            if (fileContents == null || fileContents.Length == 0) {
+                return NotFound();
+            }
+
+            string excelName = $"Commodities-List-{DateTime.UtcNow.AddHours(7).ToString("yyyyMMddHHmmssfff")}.xlsx";
+
+            return File(
+                fileContents: fileContents,
+                contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                fileDownloadName: excelName
+            );
         }
 
         private async Task<bool> addCommodityAsync(AddCommodityDto addCommodityDto) {
