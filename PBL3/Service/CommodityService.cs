@@ -12,7 +12,7 @@ namespace PBL3.Service {
 
         public async Task<List<Commodity>> GetCommoditiesSold(DateTime fromDate, DateTime toDate) {
             List<ReceiptCommodity> receiptCommodity = await _context.ReceiptCommodities
-                .Where(r => r.Receipt.Date > fromDate && r.Receipt.Date < toDate && r.Receipt.IsSales)
+                .Where(r => r.Receipt.Date >= fromDate && r.Receipt.Date <= toDate && r.Receipt.IsSales)
                 .ToListAsync();
 
             List<Commodity> commoditiesSold = new List<Commodity>();

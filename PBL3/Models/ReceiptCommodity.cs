@@ -11,9 +11,9 @@ namespace PBL3.Models {
         public string CommodityId { get; set; }
         public int CommodityQuantity { get; set; }
 
-        //[JsonIgnore]
+        [JsonIgnore]
         public virtual Receipt Receipt { get; set; }
-        //[JsonIgnore]
+        [JsonIgnore]
         public virtual Commodity Commodity { get; set; }
     }
 }

@@ -12,15 +12,15 @@ namespace PBL3.Models {
         [StringLength(9)]
         public string? ManagerId { get; set; }
 
-        //[JsonIgnore]
+        [JsonIgnore]
         public virtual User User { get; set; }
-        //[JsonIgnore]
+        [JsonIgnore]
         [InverseProperty("Employee")]
-        public virtual ICollection<Salaries> Salaries { get; set; }
+        public virtual Salaries Salaries { get; set; }
         [JsonIgnore]
         public virtual Employee? Manager { get; set; }
-        //[JsonIgnore]
-        public virtual ICollection<Titles> Titles { get; set; }
+        [JsonIgnore]
+        public virtual Titles Titles { get; set; }
         [JsonIgnore]
         public virtual ICollection<Receipt>? Receipts { get; set; }
     }

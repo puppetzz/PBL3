@@ -136,6 +136,9 @@ namespace PBL3.Service {
 
             string newId = await generationNewReceiptId();
 
+            if (receiptDto.Commodity.Count <= 0)
+                throw new Exception("Commodity list must not be empty!");
+
             foreach (Tuple<string, int> commodity in receiptDto.Commodity) {
                 var commoditydb = await _context.Commodities
                     .FirstOrDefaultAsync(c => c.CommodityId == commodity.Item1);
@@ -160,6 +163,13 @@ namespace PBL3.Service {
                 .FirstOrDefaultAsync(c => c.PhoneNumber == receiptDto.CustomerPhoneNumber);
 
             string newCustomerId;
+
+            if (receiptDto.CustomerName == "" || receiptDto.CustomerName == null)
+                throw new Exception("Customer Name must not be empty!");
+            if (receiptDto.CustomerPhoneNumber == "" || receiptDto.CustomerPhoneNumber == null)
+                throw new Exception("Customer Phone Number must not be empty!");
+            if (receiptDto.CustomerAddress == "" || receiptDto.CustomerAddress == null)
+                throw new Exception("Customer Address must not be empty!");
 
             if (customer == null) {
                 newCustomerId = await generationNewCustomerId();

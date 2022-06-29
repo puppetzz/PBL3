@@ -129,12 +129,12 @@ namespace PBL3.Controllers {
 
         [HttpPut("update-employee")]
         [Authorize]
-        public async Task<ActionResult> PutEmployee([FromForm]EmployeeUpdateDto emp) {
+        public async Task<ActionResult> PutEmployee([FromForm] EmployeeUpdateDto emp) {
             var employee = _context.Employees.Find(emp.EmployeeId);
 
             var user = _context.Users.Find(emp.EmployeeId);
 
-            if (employee == null || user == null) 
+            if (employee == null || user == null)
                 return BadRequest("Employee not found!");
 
             bool res = false;
@@ -167,7 +167,7 @@ namespace PBL3.Controllers {
 
         [HttpPut("update-employee-admin")]
         [Authorize(Roles = "admin")]
-        public async Task<ActionResult> updateEmployee([FromForm]EmployeeDto emp) {
+        public async Task<ActionResult> updateEmployee([FromForm] EmployeeDto emp) {
             var employee = _context.Employees.Find(emp.EmployeeId);
 
             var user = _context.Users.Find(emp.EmployeeId);
@@ -235,8 +235,8 @@ namespace PBL3.Controllers {
         }
 
         [HttpPost("add-employee")]
-        [Authorize(Roles="admin")]
-        public async Task<ActionResult> AddEmployee([FromForm]AddEmployeeDto emp) {
+        [Authorize(Roles = "admin")]
+        public async Task<ActionResult> AddEmployee([FromForm] AddEmployeeDto emp) {
             string employeeId = await autoGenerationEmployeeId(emp);
 
             string managerId = emp.ManagerId;
@@ -299,13 +299,13 @@ namespace PBL3.Controllers {
         }
 
         [HttpPost("add-employee-from-excel-file")]
-        [Authorize(Roles ="admin")]
+        [Authorize(Roles = "admin")]
         public async Task<ActionResult> ImportEmployeeFromExcel(IFormFile file) {
             List<AddEmployeeDto> list = new List<AddEmployeeDto>();
 
             try {
                 list = await _excelService.GetEmployeeFormExcelAsync(file);
-            } catch(Exception e) {
+            } catch (Exception e) {
                 return BadRequest(e.Message);
             }
 
@@ -372,9 +372,11 @@ namespace PBL3.Controllers {
         }
 
         [HttpDelete("delete-employee/{id}")]
-        [Authorize(Roles ="admin")]
-        public async Task<ActionResult> DeleteEmployee(string id) { 
+        [Authorize(Roles = "admin")]
+        public async Task<ActionResult> DeleteEmployee(string id) {
             var user = await _context.Users.FindAsync(id);
+
+            var account = await _context.Accounts.FirstOrDefaultAsync(a => a.UserId == id);
 
             if (user == null)
                 return BadRequest("Employee doesn't exist!");
@@ -385,6 +387,10 @@ namespace PBL3.Controllers {
                 res = await _blobService.DeleteBlobAsync(user.ImageName, _containerName);
 
             _context.Users.Remove(user);
+
+            if (account != null)
+                _context.Accounts.Remove(account);
+
             await _context.SaveChangesAsync();
 
             return Ok(new {
