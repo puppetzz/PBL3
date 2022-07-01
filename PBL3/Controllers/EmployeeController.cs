@@ -41,18 +41,10 @@ namespace PBL3.Controllers {
                     e.User.Role,
                     e.ManagerId,
                     ImageUri = e.User.ImageName == null ? null : _blobService.GetBlob(e.User.ImageName, _containerName),
-                    Title = _context.Titles
-                    .Where(t => t.EmployeeId == e.Id)
-                    .Select(t => new {
-                        t.Name,
-                        t.DateIn,
-                        t.DateOut
-                    }).ToList(),
-                    Salary = _context.Salaries
-                    .Where(s => s.Id == e.Id)
-                    .Select(s => new {
-                        s.Salary
-                    }).ToList()
+                    e.TitleName,
+                    e.Salary,
+                    e.DateIn,
+                    e.DateOut
                 })
                 .ToListAsync();
             return Ok(result);
@@ -75,18 +67,10 @@ namespace PBL3.Controllers {
                     e.User.Role,
                     e.ManagerId,
                     ImageUri = e.User.ImageName == null ? null : _blobService.GetBlob(e.User.ImageName, _containerName),
-                    Title = _context.Titles
-                    .Where(t => t.EmployeeId == e.Id)
-                    .Select(t => new {
-                        t.Name,
-                        t.DateIn,
-                        t.DateOut
-                    }).ToList(),
-                    Salary = _context.Salaries
-                    .Where(s => s.Id == e.Id)
-                    .Select(s => new {
-                        s.Salary
-                    }).ToList()
+                    e.TitleName,
+                    e.Salary,
+                    e.DateIn,
+                    e.DateOut
                 })
                 .FirstOrDefaultAsync(e => e.Id == id);
             return Ok(emp);
@@ -110,18 +94,10 @@ namespace PBL3.Controllers {
                     e.User.Role,
                     e.ManagerId,
                     ImageUri = e.User.ImageName == null ? null : _blobService.GetBlob(e.User.ImageName, _containerName),
-                    Title = _context.Titles
-                    .Where(t => t.EmployeeId == e.Id)
-                    .Select(t => new {
-                        t.Name,
-                        t.DateIn,
-                        t.DateOut
-                    }).ToList(),
-                    Salary = _context.Salaries
-                    .Where(s => s.Id == e.Id)
-                    .Select(s => new {
-                        s.Salary
-                    }).ToList()
+                    e.TitleName,
+                    e.Salary,
+                    e.DateIn,
+                    e.DateOut
                 })
                 .FirstOrDefaultAsync(e => e.Id == id);
             return Ok(emp);
@@ -166,15 +142,11 @@ namespace PBL3.Controllers {
         }
 
         [HttpPut("update-employee-admin")]
-        [Authorize(Roles = "admin")]
+        [Authorize(Roles = "admin, 0")]
         public async Task<ActionResult> updateEmployee([FromForm] EmployeeDto emp) {
             var employee = _context.Employees.Find(emp.EmployeeId);
 
             var user = _context.Users.Find(emp.EmployeeId);
-
-            var title = _context.Titles.Find(emp.EmployeeId);
-
-            var salary = _context.Salaries.Find(emp.EmployeeId);
 
             if (employee == null || user == null) {
                 return BadRequest("Employee not found!");
@@ -200,31 +172,12 @@ namespace PBL3.Controllers {
             user.PhoneNumber = emp.PhoneNumber;
             user.Email = emp.Email;
             user.Address = emp.Address;
-
-            if (title == null) {
-                await _context.Titles.AddAsync(new Titles {
-                    EmployeeId = emp.EmployeeId,
-                    Name = emp.TitleName,
-                    DateIn = emp.DateIn,
-                    DateOut = emp.DateOut
-                });
-            } else {
-                title.Name = emp.TitleName;
-                title.DateIn = emp.DateIn;
-                title.DateOut = emp.DateOut;
-            }
-
-            if (salary == null) {
-                await _context.Salaries.AddAsync(new Salaries {
-                    Id = emp.EmployeeId,
-                    Salary = emp.salary,
-                    FromDate = DateTime.UtcNow.AddHours(7),
-                    ToDate = DateTime.UtcNow.AddHours(7).AddMonths(1)
-                });
-            } else {
-                salary.Salary = emp.salary;
-            }
-
+            employee.TitleName = emp.TitleName;
+            employee.Salary = emp.salary;
+            employee.DateIn = emp.DateIn;
+            employee.DateOut = emp.DateOut;
+            if (employee.User.Role != "0")
+                user.Role = emp.Role;
 
             await _context.SaveChangesAsync();
 
@@ -235,7 +188,7 @@ namespace PBL3.Controllers {
         }
 
         [HttpPost("add-employee")]
-        [Authorize(Roles = "admin")]
+        [Authorize(Roles = "admin, 0")]
         public async Task<ActionResult> AddEmployee([FromForm] AddEmployeeDto emp) {
             string employeeId = await autoGenerationEmployeeId(emp);
 
@@ -246,7 +199,11 @@ namespace PBL3.Controllers {
 
             Employee employee = new Employee {
                 Id = employeeId,
-                ManagerId = managerId
+                ManagerId = managerId,
+                TitleName = emp.TitleName,
+                Salary = emp.salary,
+                DateIn = emp.DateIn,
+                DateOut = emp.DateOut,
             };
 
             string? fileName = null;
@@ -271,24 +228,9 @@ namespace PBL3.Controllers {
                 Role = emp.Role.ToLower(),
                 ImageName = fileName
             };
-            Titles title = new Titles {
-                EmployeeId = employeeId,
-                Name = emp.TitleName,
-                DateIn = emp.DateIn,
-                DateOut = emp.DateOut
-            };
-            DateTime fromDate = new DateTime(DateTime.Now.Year, emp.DateIn.Month, emp.DateIn.Day);
-            Salaries salarie = new Salaries {
-                Id = employeeId,
-                Salary = emp.salary,
-                FromDate = fromDate,
-                ToDate = fromDate.AddMonths(1)
-            };
 
-            await _context.Employees.AddAsync(employee);
             await _context.Users.AddAsync(user);
-            await _context.Titles.AddAsync(title);
-            await _context.Salaries.AddAsync(salarie);
+            await _context.Employees.AddAsync(employee);
 
             await _context.SaveChangesAsync();
 
@@ -299,17 +241,23 @@ namespace PBL3.Controllers {
         }
 
         [HttpPost("add-employee-from-excel-file")]
-        [Authorize(Roles = "admin")]
+        [Authorize(Roles = "admin, 0")]
         public async Task<ActionResult> ImportEmployeeFromExcel(IFormFile file) {
             List<AddEmployeeDto> list = new List<AddEmployeeDto>();
 
             try {
-                list = await _excelService.GetEmployeeFormExcelAsync(file);
+                list = await _excelService.GetEmployeeFromExcelAsync(file);
             } catch (Exception e) {
                 return BadRequest(e.Message);
             }
 
             foreach (AddEmployeeDto emp in list) {
+                if (_context.Users.Any(u => u.Email == emp.Email || u.PhoneNumber == emp.PhoneNumber))
+                    return BadRequest("The Excel file exists for the previously added employee");
+            }
+
+            foreach (AddEmployeeDto emp in list) {
+
                 string employeeId = await autoGenerationEmployeeId(emp);
 
                 string managerId = emp.ManagerId;
@@ -319,7 +267,11 @@ namespace PBL3.Controllers {
 
                 Employee employee = new Employee {
                     Id = employeeId,
-                    ManagerId = managerId
+                    ManagerId = managerId,
+                    TitleName = emp.TitleName,
+                    Salary = emp.salary,
+                    DateIn = emp.DateIn,
+                    DateOut = emp.DateOut,
                 };
 
                 string? fileName = null;
@@ -344,24 +296,9 @@ namespace PBL3.Controllers {
                     Role = emp.Role.ToLower(),
                     ImageName = fileName
                 };
-                Titles title = new Titles {
-                    EmployeeId = employeeId,
-                    Name = emp.TitleName,
-                    DateIn = emp.DateIn,
-                    DateOut = emp.DateOut
-                };
-                DateTime fromDate = new DateTime(DateTime.Now.Year, emp.DateIn.Month, emp.DateIn.Day);
-                Salaries salarie = new Salaries {
-                    Id = employeeId,
-                    Salary = emp.salary,
-                    FromDate = fromDate,
-                    ToDate = fromDate.AddMonths(1)
-                };
 
                 await _context.Employees.AddAsync(employee);
                 await _context.Users.AddAsync(user);
-                await _context.Titles.AddAsync(title);
-                await _context.Salaries.AddAsync(salarie);
 
                 await _context.SaveChangesAsync();
 
@@ -372,9 +309,15 @@ namespace PBL3.Controllers {
         }
 
         [HttpDelete("delete-employee/{id}")]
-        [Authorize(Roles = "admin")]
+        [Authorize(Roles = "admin, 0")]
         public async Task<ActionResult> DeleteEmployee(string id) {
             var user = await _context.Users.FindAsync(id);
+
+            if (user.Role == "0")
+                return BadRequest("This account cannot be deleted!");
+
+            if (user.Role == "admin" && GetCurrentUser().Role == "admin")
+                return BadRequest("Admin cannot be deleted by Admin!");
 
             var account = await _context.Accounts.FirstOrDefaultAsync(a => a.UserId == id);
 

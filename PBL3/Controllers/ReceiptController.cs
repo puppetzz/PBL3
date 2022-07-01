@@ -147,7 +147,7 @@ namespace PBL3.Controllers {
 
         [HttpPost]
         [Route("add-receipt")]
-        [Authorize(Roles = "admin, employee")]
+        [Authorize(Roles = "admin, 0, employee")]
         public async Task<ActionResult> AddReceipt(ReceiptDto receiptDto) {
             bool isSuccessful = false;
 
@@ -164,7 +164,7 @@ namespace PBL3.Controllers {
         }
 
         [HttpDelete("delete-receipt/{id}")]
-        [Authorize(Roles ="admin")]
+        [Authorize(Roles ="admin, 0")]
         public async Task<ActionResult> Delete(string id) {
             var receipt = await _context.Receipts.FindAsync(id);
             if (receipt == null)

@@ -23,8 +23,6 @@ namespace PBL3.Data {
         public DbSet<User> Users { get; set; }
         public DbSet<Notification> Notifications { get; set; }
         public DbSet<Employee> Employees { get; set; }
-        public DbSet<Salaries> Salaries { get; set; }
-        public DbSet<Titles> Titles { get; set; }
         public DbSet<Receipt> Receipts { get; set; }
         public DbSet<ReceiptCommodity> ReceiptCommodities { get; set; }
         public DbSet<Commodity> Commodities { get; set; }

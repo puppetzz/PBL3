@@ -4,7 +4,7 @@ using PBL3.Models;
 
 namespace PBL3.Service {
     public class ExcelService : IExcelService {
-        public async Task<List<CommodityWithoutImageDto>> GetCommodityFormExcelAsync(IFormFile file) {
+        public async Task<List<CommodityWithoutImageDto>> GetCommodityFromExcelAsync(IFormFile file) {
             var list = new List<CommodityWithoutImageDto>();
             using (var stream = new MemoryStream()) {
                 await file.CopyToAsync(stream);
@@ -41,7 +41,7 @@ namespace PBL3.Service {
             }
             return list;
         }
-        public async Task<List<AddEmployeeDto>?> GetEmployeeFormExcelAsync(IFormFile file) {
+        public async Task<List<AddEmployeeDto>?> GetEmployeeFromExcelAsync(IFormFile file) {
             var list = new List<AddEmployeeDto>();
             using (var stream = new MemoryStream()) {
                 await file.CopyToAsync(stream);

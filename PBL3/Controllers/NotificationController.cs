@@ -61,7 +61,7 @@ namespace PBL3.Controllers {
         }
 
         [HttpPost("add-notification")]
-        [Authorize(Roles ="admin")]
+        [Authorize(Roles ="admin, 0")]
         public async Task<ActionResult> AddNotification(NotificationAddDto notificationDto) {
             Notification notification = new Notification {
                 NotificationId = await generationNewNotificationId(),
@@ -78,7 +78,7 @@ namespace PBL3.Controllers {
         }
 
         [HttpPut("update-notification")]
-        [Authorize(Roles ="admin")]
+        [Authorize(Roles ="admin, 0")]
         public async Task<ActionResult> UpdateNotification(NotificationUpdateDto notificationDto) {
             if (notificationDto.NotificationId == null)
                 return BadRequest("NotificationId Can't be Null!");
@@ -100,7 +100,7 @@ namespace PBL3.Controllers {
         }
 
         [HttpDelete("delete-notification/{id}")]
-        [Authorize(Roles ="admin")]
+        [Authorize(Roles ="admin, 0")]
         public async Task<ActionResult> DeleteNotificaton(string id) {
             var notificaton = await _context.Notifications.FindAsync(id);
 

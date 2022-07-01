@@ -83,7 +83,7 @@ namespace PBL3.Controllers {
         }
 
         [HttpPost("add-commodity")]
-        [Authorize(Roles = "admin")]
+        [Authorize(Roles = "admin, 0")]
         public async Task<ActionResult> AddCommodity([FromForm] AddCommodityDto commodity) {
             var addCommodity = await addCommodityAsync(commodity);
 
@@ -119,7 +119,7 @@ namespace PBL3.Controllers {
         }
 
         [HttpPost("add-list-commodity-with-image")]
-        [Authorize(Roles = "admin")]
+        [Authorize(Roles = "admin, 0")]
         public async Task<ActionResult> AddCommodities([FromForm]List<AddCommodityDto> commodityDtos) {
             List<Tuple<string, int>> commodities = new List<Tuple<string, int>>();
             List<AddCommodityDto> list = new List<AddCommodityDto>();
@@ -161,7 +161,7 @@ namespace PBL3.Controllers {
         }
 
         [HttpPost("add-list-commodity-without-image")]
-        [Authorize(Roles = "admin")]
+        [Authorize(Roles = "admin, 0")]
         public async Task<ActionResult> AddCommoditiesWithoutImage(List<CommodityWithoutImageDto> commodityDtos) {
             List<Tuple<string, int>> commodities = new List<Tuple<string, int>>();
             List<CommodityWithoutImageDto> list = new List<CommodityWithoutImageDto>();
@@ -203,12 +203,12 @@ namespace PBL3.Controllers {
         }
 
         [HttpPost("add-commodity-from-excel-file")]
-        [Authorize(Roles = "admin")]
+        [Authorize(Roles = "admin, 0")]
         public async Task<ActionResult> AddCommoditiesFromExcelFile(IFormFile file) {
             List<CommodityWithoutImageDto> commodityDtos = new List<CommodityWithoutImageDto>();
 
             try {
-                commodityDtos = await _excelService.GetCommodityFormExcelAsync(file);
+                commodityDtos = await _excelService.GetCommodityFromExcelAsync(file);
             } catch (Exception e) {
                 return BadRequest(e);
             }
@@ -253,7 +253,7 @@ namespace PBL3.Controllers {
         }
 
         [HttpPut("update-commodity")]
-        [Authorize(Roles = "admin")]
+        [Authorize(Roles = "admin, 0")]
         public async Task<ActionResult> UpdateCommodity([FromForm]CommodityDto commodityDto) {
             var commodity = await _context.Commodities.FindAsync(commodityDto.CommodityId);
 
@@ -273,7 +273,6 @@ namespace PBL3.Controllers {
             }
 
             commodity.Type = commodityDto.Type;
-            commodity.Quantity = commodityDto.Quantity;
             commodity.Brand = commodityDto.Brand;
             commodity.Name = commodityDto.Name;
             commodity.Price = commodityDto.Price;
@@ -288,7 +287,7 @@ namespace PBL3.Controllers {
         }
 
         [HttpDelete("delete-commodity/{id}")]
-        [Authorize(Roles ="admin")]
+        [Authorize(Roles ="admin, 0")]
         public async Task<ActionResult> DeleteCommodity(string id) {
             var commodity = _context.Commodities.FirstOrDefault(c => c.CommodityId == id);
 
@@ -304,7 +303,7 @@ namespace PBL3.Controllers {
         }
 
         [HttpDelete("delete-list-commodity")]
-        [Authorize(Roles = "admin")]
+        [Authorize(Roles = "admin, 0")]
         public async Task<ActionResult> DeleteCommodity(List<string> ids) { 
             foreach (string id in ids) {
                 var commodity = await _context.Commodities.FirstOrDefaultAsync(c => c.CommodityId == id);
