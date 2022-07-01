@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using OfficeOpenXml;
 using PBL3.Data;
 using PBL3.DTO;
 using PBL3.Models;
@@ -223,6 +224,58 @@ namespace PBL3.Controllers {
             }
 
             return Ok(revenues);
+        }
+
+        [HttpGet("export-revenue/{fromDate}/{toDate}")]
+        [Authorize]
+        public async Task<ActionResult> ExportRevenue(DateTime fromDate, DateTime toDate) {
+            List<RevenueDto> revenues = new List<RevenueDto>();
+            for (DateTime d = fromDate; d <= toDate; d = d.AddDays(1)) {
+                Decimal moneyIn = await _context.Receipts
+                .Where(r => r.Date == d && r.IsSales)
+                .SumAsync(r => r.TotalPrice);
+                Decimal moneyOut = await _context.Receipts
+                    .Where(r => r.Date == d && !r.IsSales)
+                    .SumAsync(r => r.TotalPrice);
+                revenues.Add(new RevenueDto {
+                    Date = d,
+                    MoneyIn = moneyIn,
+                    MoneyOut = moneyOut
+                });
+            }
+
+            byte[] fileContents;
+            ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
+            ExcelPackage Ep = new ExcelPackage();
+            ExcelWorksheet Sheet = Ep.Workbook.Worksheets.Add("Employee");
+            Sheet.Cells["A1"].Value = "Date";
+            Sheet.Cells["B1"].Value = "Money In";
+            Sheet.Cells["C1"].Value = "Money Out";
+
+            int row = 2;
+            foreach (var item in revenues) {
+                Sheet.Cells[string.Format("A{0}", row)].Value = item.Date.ToString("dd-MM-yyyy");
+                Sheet.Cells[string.Format("B{0}", row)].Value = item.MoneyIn;
+                Sheet.Cells[string.Format("C{0}", row)].Value = item.MoneyOut;
+                row++;
+            }
+
+            Sheet.Cells["A:AZ"].AutoFitColumns();
+            Response.Clear();
+            Response.ContentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+            fileContents = Ep.GetAsByteArray();
+
+            if (fileContents == null || fileContents.Length == 0) {
+                return NotFound();
+            }
+
+            string excelName = $"Revenues-List-{DateTime.UtcNow.AddHours(7).ToString("yyyyMMddHHmmssfff")}.xlsx";
+
+            return File(
+                fileContents: fileContents,
+                contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                fileDownloadName: excelName
+            );
         }
 
         private string getCurrentEmployeeId() {

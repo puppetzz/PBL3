@@ -164,6 +164,9 @@ namespace PBL3.Controllers {
                 }
             }
 
+            if (GetCurrentUser().Role == "admin" && (user.Role == "admin" || user.Role == "0"))
+                return BadRequest("Admin can't update Admin!");
+
             employee.ManagerId = emp.ManagerId;
             user.FirstName = emp.FirstName;
             user.LastName = emp.LastName;
@@ -364,8 +367,12 @@ namespace PBL3.Controllers {
             Sheet.Cells["F1"].Value = "Date Of Birth";
             Sheet.Cells["G1"].Value = "Phone Number";
             Sheet.Cells["H1"].Value = "Email";
-            Sheet.Cells["K1"].Value = "Address";
-            Sheet.Cells["L1"].Value = "Role";
+            Sheet.Cells["I1"].Value = "Address";
+            Sheet.Cells["J1"].Value = "Role";
+            Sheet.Cells["K1"].Value = "Title Name";
+            Sheet.Cells["L1"].Value = "Date In";
+            Sheet.Cells["M1"].Value = "Date Out";
+            Sheet.Cells["N1"].Value = "Salary";
 
             int row = 2;
             foreach (var item in employee) {
@@ -377,11 +384,27 @@ namespace PBL3.Controllers {
                 Sheet.Cells[string.Format("C{0}", row)].Value = item.FirstName;
                 Sheet.Cells[string.Format("D{0}", row)].Value = item.LastName;
                 Sheet.Cells[string.Format("E{0}", row)].Value = item.Gender ? "Male" : "Female";
-                Sheet.Cells[string.Format("F{0}", row)].Value = item.DateOfBirth;
+                Sheet.Cells[string.Format("F{0}", row)].Value = item.DateOfBirth.ToString("dd-MM-yyyy");
                 Sheet.Cells[string.Format("G{0}", row)].Value = item.PhoneNumber;
                 Sheet.Cells[string.Format("H{0}", row)].Value = item.Email;
-                Sheet.Cells[string.Format("K{0}", row)].Value = item.Address;
-                Sheet.Cells[string.Format("L{0}", row)].Value = item.Role;
+                Sheet.Cells[string.Format("I{0}", row)].Value = item.Address;
+                Sheet.Cells[string.Format("J{0}", row)].Value = item.Role;
+                Sheet.Cells[string.Format("K{0}", row)].Value = _context.Employees
+                    .Where(e => e.Id == item.Id)
+                    .Select(e => e.TitleName)
+                    .FirstOrDefault().ToString();
+                Sheet.Cells[string.Format("L{0}", row)].Value = _context.Employees
+                    .Where(e => e.Id == item.Id)
+                    .Select(e => e.DateIn)
+                    .FirstOrDefault().ToString("dd-MM-yyyy"); 
+                Sheet.Cells[string.Format("M{0}", row)].Value = _context.Employees
+                    .Where(e => e.Id == item.Id)
+                    .Select(e => e.DateOut)
+                    .FirstOrDefault().ToString("dd-MM-yyyy");
+                Sheet.Cells[string.Format("N{0}", row)].Value = _context.Employees
+                    .Where(e => e.Id == item.Id)
+                    .Select(e => e.Salary)
+                    .FirstOrDefault().ToString();
                 row++;
             }
 

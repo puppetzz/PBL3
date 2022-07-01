@@ -14,7 +14,7 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddControllers();
 builder.Services.AddDbContext<ShopGuitarContext>(options => {
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"));
+    options.UseSqlServer(builder.Configuration.GetConnectionString("CloudConnection"));
 });
 
 builder.Services.AddScoped(o => new BlobServiceClient(builder.Configuration.GetConnectionString("BlobConnection")));
