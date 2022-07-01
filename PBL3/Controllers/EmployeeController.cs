@@ -176,8 +176,12 @@ namespace PBL3.Controllers {
             employee.Salary = emp.salary;
             employee.DateIn = emp.DateIn;
             employee.DateOut = emp.DateOut;
-            if (employee.User.Role != "0")
-                user.Role = emp.Role;
+            if (employee.User.Role != "0" && GetCurrentUser().Role == "0")
+                user.Role = emp.Role.ToLower();
+
+            if (GetCurrentUser().Role == "admin" && employee.User.Role == "employee") {
+                user.Role = emp.Role.ToLower();
+            }
 
             await _context.SaveChangesAsync();
 
