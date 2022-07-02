@@ -31,7 +31,9 @@ namespace PBL3.Controllers {
                     n.DateUpdate,
                     ManagerUpdate = n.ManagerIdUpdated == null 
                         ? null : _context.Users.FirstOrDefault(u => u.Id == n.ManagerIdUpdated)
-                }).ToListAsync();
+                }).OrderByDescending(n => n.DatePost)
+                .ThenByDescending(n => n.NotificationId)
+                .ToListAsync();
 
             if (notification == null)
                 return BadRequest("Notifications are't exists!");
@@ -118,18 +120,15 @@ namespace PBL3.Controllers {
             int newId = 0;
             if (lastNotification != null) {
                 string id = lastNotification.NotificationId;
-                newId = Convert.ToInt32(id.Substring(id.Length - 3));
-                if (newId < 999)
+                newId = Convert.ToInt32(id.Substring(id.Length - 5));
+                if (newId < 99999)
                     newId += 1;
                 else
                     newId = 1;
             } else {
                 newId = 1;
             }
-            return $"NO{DateTime.Now.Day}" +
-                $"{DateTime.Now.Month}" +
-                $"{DateTime.Now.Year.ToString().Substring(2)}" +
-                $"{newId:D3}";
+            return $"NO{DateTime.UtcNow.AddHours(7).Year.ToString().Substring(2)}0{newId:D5}";
         }
 
         private string getCurrentEmployeeId() {

@@ -59,7 +59,9 @@ namespace PBL3.Controllers {
                         }).ToList(),
                     r.TotalPrice,
                     r.Date
-                }).ToListAsync();
+                }).OrderByDescending(r => r.Date)
+                .ThenByDescending(r => r.ReceiptId)
+                .ToListAsync();
 
             return Ok(receipts);
         }
@@ -99,7 +101,9 @@ namespace PBL3.Controllers {
                         }).ToList(),
                     r.TotalPrice,
                     r.Date
-                }).ToListAsync();
+                }).OrderByDescending(r => r.Date)
+                .ThenByDescending(r => r.ReceiptId)
+                .ToListAsync();
 
             return Ok(receipts);
         }

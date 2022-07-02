@@ -28,6 +28,7 @@ namespace PBL3.Controllers {
         public async Task<ActionResult> GetAllEmployee() {
             var result = await _context
                 .Employees
+                .Where(e => e.User.Role != "0")
                 .Include(e => e.User)
                 .Select(e => new {
                     e.Id,
@@ -353,6 +354,7 @@ namespace PBL3.Controllers {
         [Authorize]
         public async Task<ActionResult> ExportEmployee() {
             var employee = await _context.Users
+                .Where(u => u.Role != "0")
                 .ToListAsync();
 
             byte[] fileContents;
