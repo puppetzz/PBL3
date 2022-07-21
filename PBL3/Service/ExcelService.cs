@@ -61,6 +61,7 @@ namespace PBL3.Service {
                             if (worksheet.Cells[row, col].Value == null)
                                 throw new NullReferenceException("Data from excel file has null value");
                         }
+
                         list.Add(new AddEmployeeDto {
                             ManagerId = worksheet.Cells[row, 1].Value.ToString().Trim(),
                             FirstName = worksheet.Cells[row, 2].Value.ToString().Trim(),
